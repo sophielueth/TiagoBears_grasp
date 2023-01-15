@@ -26,4 +26,4 @@ class Cube:
 	def update_pose(self, pose: PoseStamped):
 		self.pose = pose
 
-	# TODO: interface to rotate the ClorMap... Not sure yet whether to connect it automatically to the pose or do it extra
+	# TODO: interface to rotate the ColorMap... Not sure yet whether to connect it automatically to the pose or do it extra
