@@ -1,5 +1,5 @@
 
-from geometry_msgs.msg import StampedPose
+from geometry_msgs.msg import PoseStamped
 
 import rospy
 
@@ -21,9 +21,9 @@ class Cube:
 		self._colormap = ColorMap(top_color=top_color)
 
 		# continuously update the pose:
-		rospy.Subscriber(self._pose_topic, StampedPose, self.update_pose)
+		rospy.Subscriber(self._pose_topic, PoseStamped, self.update_pose)
 
-	def update_pose(self, pose: StampedPose):
+	def update_pose(self, pose: PoseStamped):
 		self.pose = pose
 
 	# TODO: interface to rotate the ClorMap... Not sure yet whether to connect it automatically to the pose or do it extra
