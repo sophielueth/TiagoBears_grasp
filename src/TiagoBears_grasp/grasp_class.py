@@ -2,28 +2,30 @@
 from math import pi
 import sys
 import copy
+import numpy as np
 
 import rospy
 import moveit_commander
 import moveit_msgs.msg
-import geometry_msgs.msg
 from geometry_msgs.msg import Pose, PoseStamped
+from tf import transformations
 
 from cube_class import Cube
 
 # MAIN FRAME IS base_footprint
-# TODO: add error handling
+# later TODO: add error handling
 
 class Grasp:
 	def __init__(self):
+		# later TODO add to param server and read out
 		self._approach_angle = pi / 4 # in rad
-		self._cube_length = 0.06 # in m
+		self._cube_length = 0.045 # in m
 		self._height_over_place = 0.005 # in m 
 		
 		# self._wait_pose_left = Pose() # TODO add
 		# self._wait_pose_right = Pose()
 
-		self._look_at_pose_left = Pose() # later TODO add to param server and read out
+		self._look_at_pose_left = Pose() 
 		(self._look_at_pose_left.position.x, self._look_at_pose_left.position.y, self._look_at_pose_left.position.z) = (0.626, 0.107, 0.882) # supposed to be sent to gripper_left_grasping_frame
 		(self._look_at_pose_left.orientation.x, self._look_at_pose_left.orientation.y, self._look_at_pose_left.orientation.z, self._look_at_pose_left.orientation.w) = (0.774, -0.497, 0.356, -0.165)
 		self._look_at_pose_right = Pose()
@@ -72,56 +74,70 @@ class Grasp:
 		# group_names = robot.get_group_names()
 		# robot.get_current_state()
 
-
-	def grasp(self, cube: Cube):
+	def pick(self, cube: Cube):
 		# decide on arm to use
 		use_left_arm = True if cube.pose.y > 0 else False
 		move_group = self.move_group_left if use_left_arm else self.move_group_right
 
-		# create pre-grasp, grasp position
-		pre_grasp_poses = self.get_pre_grasp_poses(cube.pose)
+		# create pre-pick (10 cm above pick posistion) & pick position
+		pre_pick_poses = self.get_pre_pickplace_poses(cube.pose)
 		
-		# grasp
-		(plan, fraction) = move_group.compute_cartesian_path(
-			pre_grasp_poses,  # waypoints to follow
+		# pick
+		plan, _ = move_group.compute_cartesian_path(
+			pre_pick_poses,  # waypoints to follow
 			0.01,  # eef_step
 			0.0)  # jump_threshold
 		move_group.execute_plan(plan, wait=True) # TODO: Somehow enable that the other arm can be started while the first one is in movement
+		
 		# close gripper
 		# TODO: find out how to do that
 		
-		# post grasp - do something?
-
+		# create post grasp position (same as pre-grasp position) and retract
+		plan, _ = move_group.compute_cartesian_path(
+			[pre_pick_poses[0]], 0.01, 0.0)  
+		move_group.execute_plan(plan, wait=True)
 
 		# move to watch position
 		move_left_to_watch_position() if use_left_arm else move_right_to_watch_position()
 
 		return use_left_arm
 
-	def place(self, place_pose:Pose, use_left_arm:bool)
-		# pre-place, place position, post-place
+	def place(self, place_pose:Pose, use_left_arm:bool):
+		# select arm to use
+		move_group = self.move_group_left if use_left_arm else self.move_group_right
+
+		# create pre-place (10 cm above place posistion) & place position
+		get_pre_pickplace_poses(place_pose)
+
 		# place
+		plan, _ = move_group.compute_cartesian_path(pre_place_poses, 0.01, 0.0)
+	
+		move_group.execute_plan(plan, wait=True)
+		
 		# open gripper
-		# Also in case of an exception:
-		# move to wait position, open gripper
+		# TODO: find out how to do that
 
+		# create post place position (same as pre-place position) and retract
+		plan, _ = move_group.compute_cartesian_path(
+			[pre_place_poses[0]], 0.01, 0.0)  
+		move_group.execute_plan(plan, wait=True)
 
-	def get_pre_grasp_poses(self, cube_pose:Pose):
-		grasp_pose = copy.deepcopy(cube_pose) # TODO: change the orientation
-		pre_grasp_pose = copy.deepcopy(cube_pose)
-		pre_grasp_pose.z += 0.1 # have the end-effector approach from 10 cm above the cube
+		# move to watch position
+		move_left_to_watch_position() if use_left_arm else move_right_to_watch_position()
+
+	def get_pre_pickplace_poses(self, cube_pose:Pose):
+		target_pose = copy.deepcopy(cube_pose)
+		# TODO: use self._approach_angle to calculate it
+		R = np.array([[1,  0,  0, 0],
+					  [0,  1, -1, 0],
+					  [1, -1, -1, 0],
+					  [0,  0,  0, np.sqrt(2)]]) / np.sqrt(2)# TODO: adjust orientation to the side of the cube to approach
+		target_pose.orientation = transformations.quaternion_from_matrix(R) 
+		
+		pre_target_pose = copy.deepcopy(target_pose)
+		pre_target_pose.z += 0.1 # have the end-effector approach from 10 cm above the cube
 
 		return [pre_grasp_pose, grasp_pose]
-
-	def get_post_grasp_poses(self, cube_pose:PoseStamped): #TODO: encode which side is used
-		post_grasp_pose = cube_pose.pose #TODO: adjust
-		return [post_grasp_pose, self._look_at_pose_left]
-
-	def get_pre_place_poses(self, place_pose:PoseStamped):
-		pass
-
-	def get_post_place_poses(self, place_pose:PoseStamped):
-		pass
 
 	def move_left_to_watch_position(self):
 		plan, _ = self.move_group_left.compute_cartesian_path([self._look_at_pose_left], 0.01, 0.0)
