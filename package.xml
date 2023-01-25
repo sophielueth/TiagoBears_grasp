@@ -12,10 +12,12 @@
   <depend>geometry_msgs</depend>
   <depend>std_msgs</depend>
   <depend>nav_msgs</depend>
+  <depend>trajectory_msgs</depend>
   <depend>moveit_msgs</depend>
   <depend>rospy</depend>
   <depend>tf</depend>
   <depend>moveit_commander</depend>
+  <depend>actionlib</depend>
 
   <depend>gazebo_ros</depend>
  
