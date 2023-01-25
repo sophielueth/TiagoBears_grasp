@@ -15,6 +15,11 @@ from cube_class import Cube
 # MAIN FRAME IS base_footprint
 # later TODO: add error handling
 
+# list of (current)Z TODO s:
+# - add opening and closing of gripper via gripper_left_controller and gripper_right_controller (Action Client)
+# - check endeffector frame of groups, otherwise convert them  
+
+
 class Grasp:
 	def __init__(self):
 		# later TODO add to param server and read out
@@ -67,7 +72,6 @@ class Grasp:
 		# move to wait position (for now using the watch position as wait position)
 		move_both_to_watch_position()
 
-
 		# Stuff that might be useful
 		# rospy.init_node('grasp', anonymous=True) is no node
 		# eef_link = move_group.get_end_effector_link()
@@ -90,7 +94,7 @@ class Grasp:
 		move_group.execute_plan(plan, wait=True) # TODO: Somehow enable that the other arm can be started while the first one is in movement
 		
 		# close gripper
-		# TODO: find out how to do that
+		# TODO
 		
 		# create post grasp position (same as pre-grasp position) and retract
 		plan, _ = move_group.compute_cartesian_path(
@@ -115,7 +119,7 @@ class Grasp:
 		move_group.execute_plan(plan, wait=True)
 		
 		# open gripper
-		# TODO: find out how to do that
+		# TODO
 
 		# create post place position (same as pre-place position) and retract
 		plan, _ = move_group.compute_cartesian_path(

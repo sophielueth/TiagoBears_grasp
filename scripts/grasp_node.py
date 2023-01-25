@@ -6,9 +6,11 @@ from TiagoBears_grasp.cube_class import Cube
 
 if __name == '__main__':
     try:
-        Grasp()
-        Cube(10)
+        grasp = Grasp()
+        cube_13 = Cube(13)
+
+        grasp.pick(cube_13)
+        print('pick ended')
     except rospy.ROSInterruptException:
         print('an exception has occured')
 
-        
