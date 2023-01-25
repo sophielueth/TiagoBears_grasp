@@ -4,7 +4,7 @@ import rospy
 from TiagoBears_grasp.grasp_class import Grasp
 from TiagoBears_grasp.cube_class import Cube
 
-if __name == '__main__':
+if __name__ == '__main__':
     try:
         grasp = Grasp()
         cube_13 = Cube(13)

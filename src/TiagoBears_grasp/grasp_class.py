@@ -13,11 +13,15 @@ from tf import transformations
 from cube_class import Cube
 
 # MAIN FRAME IS base_footprint
-# later TODO: add error handling
+# later TODO s: 
+# - both arms to move and "work" simulaneously
+# - add some params in the init function to a param .yaml and read out from the parameter server
+# - add a smart wait pose
 
 # list of (current)Z TODO s:
 # - add opening and closing of gripper via gripper_left_controller and gripper_right_controller (Action Client)
-# - check endeffector frame of groups, otherwise convert them  
+# - check endeffector frame of groups, otherwise convert them, add orientation of approach angle 
+# - add error handling
 
 
 class Grasp:
@@ -27,7 +31,7 @@ class Grasp:
 		self._cube_length = 0.045 # in m
 		self._height_over_place = 0.005 # in m 
 		
-		# self._wait_pose_left = Pose() # TODO add
+		# self._wait_pose_left = Pose() # later TODO see above
 		# self._wait_pose_right = Pose()
 
 		self._look_at_pose_left = Pose() 
@@ -52,14 +56,14 @@ class Grasp:
 		## Instantiate a `MoveGroupCommander`_ object.  This object is an interface
 		## to a planning group (group of joints).
 		## This interface can be used to plan and execute motions:
-		group_name_left = "arm_left"  #TODO: check for group names to include the gripper, as we want to put the gripper_right_grasping_frame onto the cube position
+		group_name_left = "arm_left"  
 		group_name_right = "arm_right"
 		self.move_group_left = moveit_commander.MoveGroupCommander(group_name_left)
 		self.move_group_right = moveit_commander.MoveGroupCommander(group_name_right)
 
 		## Create a `DisplayTrajectory`_ ROS publisher which is used to display
 		## trajectories in Rviz:
-		# TODO: check whether I can have one topic to publish both trajectories
+		# very later TODO: check whether I can have one topic to publish both trajectories
 		self.display_trajectory_publisher = rospy.Publisher('/move_group/display_planned_path',
 		                                               moveit_msgs.msg.DisplayTrajectory,
 		                                               queue_size=20)
@@ -70,7 +74,7 @@ class Grasp:
 		print("============ Planning frame left: %s" % planning_frame_left)
 
 		# move to wait position (for now using the watch position as wait position)
-		move_both_to_watch_position()
+		self.move_both_to_watch_position()
 
 		# Stuff that might be useful
 		# rospy.init_node('grasp', anonymous=True) is no node
@@ -91,7 +95,7 @@ class Grasp:
 			pre_pick_poses,  # waypoints to follow
 			0.01,  # eef_step
 			0.0)  # jump_threshold
-		move_group.execute_plan(plan, wait=True) # TODO: Somehow enable that the other arm can be started while the first one is in movement
+		move_group.execute_plan(plan, wait=True) # later TODO: Somehow enable that the other arm can be started while the first one is in movement
 		
 		# close gripper
 		# TODO
@@ -102,7 +106,7 @@ class Grasp:
 		move_group.execute_plan(plan, wait=True)
 
 		# move to watch position
-		move_left_to_watch_position() if use_left_arm else move_right_to_watch_position()
+		self.move_left_to_watch_position() if use_left_arm else self.move_right_to_watch_position()
 
 		return use_left_arm
 
@@ -111,7 +115,7 @@ class Grasp:
 		move_group = self.move_group_left if use_left_arm else self.move_group_right
 
 		# create pre-place (10 cm above place posistion) & place position
-		get_pre_pickplace_poses(place_pose)
+		pre_place_poses = self.get_pre_pickplace_poses(place_pose)
 
 		# place
 		plan, _ = move_group.compute_cartesian_path(pre_place_poses, 0.01, 0.0)
@@ -127,7 +131,7 @@ class Grasp:
 		move_group.execute_plan(plan, wait=True)
 
 		# move to watch position
-		move_left_to_watch_position() if use_left_arm else move_right_to_watch_position()
+		self.move_left_to_watch_position() if use_left_arm else self.move_right_to_watch_position()
 
 	def get_pre_pickplace_poses(self, cube_pose:Pose):
 		target_pose = copy.deepcopy(cube_pose)
@@ -141,7 +145,7 @@ class Grasp:
 		pre_target_pose = copy.deepcopy(target_pose)
 		pre_target_pose.z += 0.1 # have the end-effector approach from 10 cm above the cube
 
-		return [pre_grasp_pose, grasp_pose]
+		return [pre_target_pose, target_pose]
 
 	def move_left_to_watch_position(self):
 		plan, _ = self.move_group_left.compute_cartesian_path([self._look_at_pose_left], 0.01, 0.0)
@@ -153,5 +157,5 @@ class Grasp:
 
 	def move_both_to_watch_position(self):
 		# later TODO: make simultaneuos
-		move_left_to_watch_position()
-		move_right_to_watch_position()
+		self.move_left_to_watch_position()
+		self.move_right_to_watch_position()
