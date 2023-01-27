@@ -41,8 +41,12 @@ class Grasp:
 		# self._wait_pose_left = Pose() # later TODO add wait pose above table
 		# self._wait_pose_right = Pose()
 
-		self._look_at_pose_left = Pose(Point(0.626, 0.107, 0.882), Quaternion(0.774, -0.497, 0.356, -0.165)) # supposed to be sent to gripper_left_grasping_frame
-		self._look_at_pose_right = Pose(Point(0.608, -0.130, 0.882), Quaternion(0.773, 0.494, 0.364, 0.162)) # supposed to be sent to gripper_right_grasping_frame
+		# self._look_at_pose_left = Pose(Point(0.626, 0.107, 0.882), Quaternion(0.774, -0.497, 0.356, -0.165)) # supposed to be sent to gripper_left_grasping_frame
+		# self._look_at_pose_right = Pose(Point(0.608, -0.130, 0.882), Quaternion(0.773, 0.494, 0.364, 0.162)) # supposed to be sent to gripper_right_grasping_frame
+
+		# there was a collision when tried the old poses
+		self._look_at_pose_left = Pose(Point(0.4, 0.25, 0.882), Quaternion( 0.9, 0.4, -0.2, 0.4)) # supposed to be sent to gripper_left_grasping_frame
+		self._look_at_pose_right = Pose(Point(0.4, -0.25, 0.882), Quaternion(0.9, 0.4, -0.2, 0.4)) # supposed to be sent to gripper_right_grasping_frame
 
 		## initialize move it for both arms
 		moveit_commander.roscpp_initialize(sys.argv)
@@ -74,8 +78,8 @@ class Grasp:
 		self.move_both_to_watch_position()
 
 		# init action clients to move grippers
-		self._gripper_left_client = SimpleActionClient(ns='/gripper_left_controller/follow_joint_trajectory', ActionSpec=FollowJointTrajectory)
-		self._gripper_right_client = SimpleActionClient(ns='/gripper_right_controller/follow_joint_trajectory', ActionSpec=FollowJointTrajectory)
+		self._gripper_left_client = SimpleActionClient(ns='/gripper_left_controller/follow_joint_trajectory', ActionSpec=FollowJointTrajectoryAction)
+		self._gripper_right_client = SimpleActionClient(ns='/gripper_right_controller/follow_joint_trajectory', ActionSpec=FollowJointTrajectoryAction)
 		self._gripper_left_client.wait_for_server()
 		self._gripper_right_client.wait_for_server()
 
@@ -85,13 +89,15 @@ class Grasp:
 		self._gripper_left_joint_names = ['gripper_left_left_finger_joint', 'gripper_left_right_figher_joint']
 		self._gripper_right_joint_names = ['gripper_right_left_finger_joint', 'gripper_rightt_right_figher_joint']
 
-		self.open_gripper()
+		# self.open_gripper()
 
 		# Stuff that might be useful
 		# eef_link = move_group.get_end_effector_link()
 		# robot.get_current_state()
 
-	def pick(self, cube: Cube) -> bool:
+	# seems ROS doesn't allow determining the argument and the output types
+	# def pick(self, cube: Cube) -> bool: 
+	def pick(self, cube):
 		# decide on arm to use
 		use_left = True if cube.pose.y > 0 else False
 		move_group = self.move_group_left if use_left else self.move_group_right
@@ -106,7 +112,7 @@ class Grasp:
 
 		return use_left
 
-	def place(self, use_left:bool, place_pose:Pose,):
+	def place(self, use_left, place_pose):
 		# select arm to use
 		move_group = self.move_group_left if use_left else self.move_group_right
 
@@ -120,18 +126,18 @@ class Grasp:
 
 	def move_left_to_watch_position(self):
 		plan, _ = self.move_group_left.compute_cartesian_path([self._look_at_pose_left], 0.01, 0.0)
-		self.move_group_left._execute_plan(plan, wait=True)
+		self.move_group_left.execute(plan, wait=True)
 
 	def move_right_to_watch_position(self):
 		plan, _ = self.move_group_right.compute_cartesian_path([self._look_at_pose_right], 0.01, 0.0)
-		self.move_group_right._execute_plan(plan, wait=True)
+		self.move_group_right.execute(plan, wait=True)
 
 	def move_both_to_watch_position(self):
 		# later TODO: make simultaneuos
 		self.move_left_to_watch_position()
 		self.move_right_to_watch_position()
 
-	def close_gripper(self, use_left:bool):
+	def close_gripper(self, use_left):
 		gripper_client, joint_names = self._gripper_left_client, self._gripper_left_joint_names if use_left else self._gripper_right_client, self._gripper_right_joint_names
 		
 		# create goal for the action client for the gripper
@@ -147,7 +153,8 @@ class Grasp:
 		
 		gripper_client.send_goal_and_wait(goal=goal, Duration=rospy.Duration.from_sec(5.0))
 
-	def open_gripper(self, use_left:bool):
+	def open_gripper(self, use_left=True):
+		print(self._gripper_left_client, self._gripper_left_joint_names)
 		gripper_client, joint_names = self._gripper_left_client, self._gripper_left_joint_names if use_left else self._gripper_right_client, self._gripper_right_joint_names
 		
 		# create goal for the action client for the gripper
@@ -163,7 +170,7 @@ class Grasp:
 		
 		gripper_client.send_goal_and_wait(goal=goal, Duration=rospy.Duration.from_sec(5.0))
 
-	def _execute_pick(self, use_left:bool, pick_poses:list):
+	def _execute_pick(self, use_left, pick_poses):
 		move_group = self.move_group_left if use_left else self.move_group_right
 
 		plan, _ = move_group.compute_cartesian_path(
@@ -174,7 +181,7 @@ class Grasp:
 		
 		self.close_gripper()
 
-	def _execute_place(self, use_left:bool, place_poses:list):
+	def _execute_place(self, use_left, place_poses):
 		move_group = self.move_group_left if use_left else self.move_group_right
 
 		plan, _ = move_group.compute_cartesian_path(place_poses, 0.01, 0.0)
@@ -183,7 +190,7 @@ class Grasp:
 		
 		self.open_gripper()
 
-	def _retract(self, use_left:bool, retract_pose:Pose):
+	def _retract(self, use_left, retract_pose):
 		move_group = self.move_group_left if use_left else self.move_group_right
 
 		plan, _ = move_group.compute_cartesian_path(
@@ -193,7 +200,7 @@ class Grasp:
 		# move to watch position
 		self.move_left_to_watch_position() if use_left else self.move_right_to_watch_position()
 
-	def _get_pre_pickplace_poses(self, cube_pose:Pose):
+	def _get_pre_pickplace_poses(self, cube_pose):
 		target_pose = copy.deepcopy(cube_pose)
 		# TODO: use self._approach_angle to calculate it
 		R = np.array([[1,  0,  0, 0],

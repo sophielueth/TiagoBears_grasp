@@ -119,7 +119,7 @@ class Cube:
 		# create the color map
 		self._colormap = ColorMap(self.color_topic)
 
-	def update_pose(self, msg: Odometry):
+	def update_pose(self, msg):
 		""" A callback function to update the pose whenever the pose subscriber recieves a topic
 		"""
 		self.pose = msg.pose.pose
