@@ -7,7 +7,7 @@ import time
 node_name='cube'
 rospy.init_node(node_name, anonymous=True)
 
+cubes=[]
 for i in range(28):
-    cube=Cube(id=i)
-    time.sleep(1)
-    print("cube",i,cube.get_color())
+    cubes.append(Cube(id=i))
+rospy.spin()

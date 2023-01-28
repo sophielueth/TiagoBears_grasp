@@ -41,12 +41,12 @@ class Grasp:
 		# self._wait_pose_left = Pose() # later TODO add wait pose above table
 		# self._wait_pose_right = Pose()
 
-		# self._look_at_pose_left = Pose(Point(0.626, 0.107, 0.882), Quaternion(0.774, -0.497, 0.356, -0.165)) # supposed to be sent to gripper_left_grasping_frame
-		# self._look_at_pose_right = Pose(Point(0.608, -0.130, 0.882), Quaternion(0.773, 0.494, 0.364, 0.162)) # supposed to be sent to gripper_right_grasping_frame
+		self._look_at_pose_left = Pose(Point(0.626, 0.107, 0.882), Quaternion(0.774, -0.497, 0.356, -0.165)) # supposed to be sent to gripper_left_grasping_frame
+		self._look_at_pose_right = Pose(Point(0.608, -0.130, 0.882), Quaternion(0.773, 0.494, 0.364, 0.162)) # supposed to be sent to gripper_right_grasping_frame
 
 		# there was a collision when tried the old poses
-		self._look_at_pose_left = Pose(Point(0.4, 0.25, 0.882), Quaternion( 0.9, 0.4, -0.2, 0.4)) # supposed to be sent to gripper_left_grasping_frame
-		self._look_at_pose_right = Pose(Point(0.4, -0.25, 0.882), Quaternion(0.9, 0.4, -0.2, 0.4)) # supposed to be sent to gripper_right_grasping_frame
+		# self._look_at_pose_left = Pose(Point(0.4, 0.25, 0.882), Quaternion( 0.9, 0.4, -0.2, 0.4)) # supposed to be sent to gripper_left_grasping_frame
+		# self._look_at_pose_right = Pose(Point(0.4, -0.25, 0.882), Quaternion(0.9, 0.4, -0.2, 0.4)) # supposed to be sent to gripper_right_grasping_frame
 
 		## initialize move it for both arms
 		moveit_commander.roscpp_initialize(sys.argv)

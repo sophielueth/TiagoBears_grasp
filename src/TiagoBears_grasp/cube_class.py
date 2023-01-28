@@ -3,11 +3,14 @@ import rospy
 
 from std_msgs.msg import String # for color
 from nav_msgs.msg import Odometry # for pose
+from geometry_msgs.msg import Quaternion
 
 from collections import deque
 from enum import Enum
-# from TiagoBears_grasp.color_map_class import Color, ColorMap
 
+import tf.transformations as tr
+import numpy as np
+np.set_printoptions(precision=2, suppress=True)
 
 class Color(Enum):
 	# 0,     1,    2,      3,      4,      5,
@@ -111,18 +114,40 @@ class Cube:
 		self._pose_topic = '/cube_{0}_odom'.format(id)
 		# continuously update the pose:
 		# subscribe to the pose estimation topic
-		self.pose_sub=rospy.Subscriber(self._pose_topic, Odometry, self.update_pose)
+		self.pose_sub=rospy.Subscriber(self._pose_topic, Odometry, self.update_pose, queue_size=1)
+		self._pose_topic_updated = '/cube_{0}_odom_updated'.format(id)
+		self.pose_pub=rospy.Publisher(self._pose_topic_updated, Odometry, queue_size=1)
 		
 		self._color_topic='/cube_{0}_color'.format(id)
 		# get the top color from the color detection node
-		self.color= rospy.wait_for_message(self._color_topic, String)
+		# self.color= rospy.wait_for_message(self._color_topic, String)
 		# create the color map
-		self._colormap = ColorMap(self.color_topic)
+		# self._colormap = ColorMap(self.color_topic)
+		self.counter=0
+
+	def correct_cube_rotation_matrix(self, R):
+		for i in range(3,0,-1):
+			ind=np.unravel_index(np.argmax(abs(R[:i,:i]), axis=None), (i,i))
+			# the maximum should be a positive number
+			if R[ind[0],ind[1]]<0:
+				R[ind[0]]*=-1
+			# swap colums
+			R[[ind[0],i-1]]=R[[i-1,ind[0]]]
+			# swap rows
+			R[:, [ind[1],i-1]]=R[:, [i-1,ind[1]]]
+		return R
 
 	def update_pose(self, msg):
 		""" A callback function to update the pose whenever the pose subscriber recieves a topic
 		"""
-		self.pose = msg.pose.pose
+		q = msg.pose.pose.orientation
+		if self.counter<1 and self.id==12:
+			R=tr.quaternion_matrix([q.x, q.y, q.z, q.w])
+			new_R=self.correct_cube_rotation_matrix(R)
+			new_q=Quaternion(*tr.quaternion_from_matrix(new_R)[:])
+			msg.pose.pose.orientation=new_q
+			self.pose_pub.publish(msg)
+		self.counter+=1
 
 	def update_color(self):
 		""" A function to update the colormap using the color detection node when needed
