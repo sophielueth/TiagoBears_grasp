@@ -123,7 +123,6 @@ class Cube:
 		# self.color= rospy.wait_for_message(self._color_topic, String)
 		# create the color map
 		# self._colormap = ColorMap(self.color_topic)
-		self.counter=0
 
 	def correct_cube_rotation_matrix(self, R):
 		for i in range(3,0,-1):
@@ -141,13 +140,11 @@ class Cube:
 		""" A callback function to update the pose whenever the pose subscriber recieves a topic
 		"""
 		q = msg.pose.pose.orientation
-		if self.counter<1 and self.id==12:
-			R=tr.quaternion_matrix([q.x, q.y, q.z, q.w])
-			new_R=self.correct_cube_rotation_matrix(R)
-			new_q=Quaternion(*tr.quaternion_from_matrix(new_R)[:])
-			msg.pose.pose.orientation=new_q
-			self.pose_pub.publish(msg)
-		self.counter+=1
+		R=tr.quaternion_matrix([q.x, q.y, q.z, q.w])
+		new_R=self.correct_cube_rotation_matrix(R)
+		new_q=Quaternion(*tr.quaternion_from_matrix(new_R)[:])
+		msg.pose.pose.orientation=new_q
+		self.pose_pub.publish(msg)
 
 	def update_color(self):
 		""" A function to update the colormap using the color detection node when needed
