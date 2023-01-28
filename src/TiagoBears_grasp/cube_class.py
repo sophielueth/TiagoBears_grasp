@@ -144,7 +144,8 @@ class Cube:
 		new_R=self.correct_cube_rotation_matrix(R)
 		new_q=Quaternion(*tr.quaternion_from_matrix(new_R)[:])
 		msg.pose.pose.orientation=new_q
-		self.pose_pub.publish(msg)
+		# self.pose_pub.publish(msg)
+		self.pose = msg.pose.pose
 
 	def update_color(self):
 		""" A function to update the colormap using the color detection node when needed
