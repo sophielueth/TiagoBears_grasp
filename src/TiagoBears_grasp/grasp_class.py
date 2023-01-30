@@ -26,7 +26,6 @@ from cube_class import Cube
 # - add a smart wait pose
 
 # list of (current) TODO s:
-# - move Torso to joint state 0.25
 # - check opening and closing values for the endeffector
 # - add orientation of approach angle 
 # - add error handling
@@ -66,6 +65,12 @@ class Grasp:
 		                                               moveit_msgs.msg.DisplayTrajectory,
 		                                               queue_size=20)
 
+		# move torso to joint position 0.25
+		torso_pub = rospy.Publisher('/torso_controller/command', JointTrajectory)
+		msg = JointTrajectory(joint_names=['torso_lift_joint'], 
+							  points=[JointTrajectoryPoint(positions=[0.25], time_from_start=rospy.Duration.from_sec(1))])
+		torso_pub.publish(msg)
+
 		# Set end_effector_link frame to gripper_left_grasping_frame
 		self.move_group_left.set_end_effector_link('gripper_left_grasping_frame')
 		self.move_group_right.set_end_effector_link('gripper_right_grasping_frame')
@@ -80,7 +85,7 @@ class Grasp:
 		self._gripper_right_client.wait_for_server()
 
 		# TODO: check closed values
-		self._gripper_closed = [JointTrajectoryPoint(positions=[0.6], time_from_start=rospy.Duration.from_sec(2))]
+		self._gripper_closed = [JointTrajectoryPoint(positions=[0.8], time_from_start=rospy.Duration.from_sec(2))]
 		self._gripper_opened = [JointTrajectoryPoint(positions=[0.0], time_from_start=rospy.Duration.from_sec(2))]
 		self._gripper_left_joint_names = ['gripper_left_finger_joint']
 		self._gripper_right_joint_names = ['gripper_right_finger_joint']
@@ -98,7 +103,7 @@ class Grasp:
 
 		# create pre-pick (10 cm above pick posistion) & pick position
 		pick_poses = self._get_pre_pickplace_poses(cube.pose)
-		self._execute_pick(move_group, pick_poses)
+		self._execute_pick(use_left, pick_poses)
 		
 		# retract via the pre-pick pose to the watch position
 		self._retract(use_left, pick_poses[0])
@@ -174,20 +179,20 @@ class Grasp:
 	def _execute_pick(self, use_left, pick_poses):
 		move_group = self.move_group_left if use_left else self.move_group_right
 
-		plan, _ = move_group.compute_cartesian_path(
+		plan, fraction = move_group.compute_cartesian_path(
 			pick_poses,  # waypoints to follow
 			0.01,  # eef_step
 			0.0)  # jump_threshold
-		move_group.execute(plan, wait=True) # later TODO: Somehow enable that the other arm can be started while the first one is in movement
+		res = move_group.execute(plan, wait=True) # later TODO: Somehow enable that the other arm can be started while the first one is in movement
 		
 		self.close_gripper(use_left)
 
 	def _execute_place(self, use_left, place_poses):
 		move_group = self.move_group_left if use_left else self.move_group_right
 
-		plan, _ = move_group.compute_cartesian_path(place_poses, 0.01, 0.0)
+		plan, fraction = move_group.compute_cartesian_path(place_poses, 0.01, 0.0)
 	
-		move_group.execute(plan, wait=True)
+		res = move_group.execute(plan, wait=True)
 		
 		self.open_gripper(use_left)
 
@@ -203,7 +208,11 @@ class Grasp:
 
 	def _get_pre_pickplace_poses(self, cube_pose):
 		target_pose = copy.deepcopy(cube_pose)
-		
+		# TODO: hardcoded to avoid collision:
+		target_pose.position.x -= 0.02
+		target_pose.position.z += 0.02
+
+
 		# TODO: check orientation to the side of the cube to approach
 		cos_aa = np.cos(self._approach_angle)
 		sin_aa = np.sin(self._approach_angle)
