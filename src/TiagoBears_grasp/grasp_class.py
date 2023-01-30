@@ -26,6 +26,7 @@ from cube_class import Cube
 # - add a smart wait pose
 
 # list of (current) TODO s:
+# - move Torso to joint state 0.25
 # - check opening and closing values for the endeffector
 # - add orientation of approach angle 
 # - add error handling
@@ -212,10 +213,10 @@ class Grasp:
 									 [-sin_aa, 0, cos_aa, 0],
 									 [0,	   0,      0, 1]])
 
-
 		# rotate cube's orientation around own y-axis by approach_angle (check order within multiplication function, approach angle should be local rotation, i. e. last)
 		q_approach_angle = tr.quaternion_from_matrix(R_approach_angle)
-		target_pose.orientation = Quaternion(*tr.quaternion_multiply(target_pose.orientation, q_approach_angle)[:])
+		q_target_pose = np.array([target_pose.orientation.x, target_pose.orientation.y, target_pose.orientation.z, target_pose.orientation.w])
+		target_pose.orientation = Quaternion(*tr.quaternion_multiply(q_target_pose, q_approach_angle)[:])
 		
 		pre_target_pose = copy.deepcopy(target_pose)
 		pre_target_pose.position.z += 0.1 # have the end-effector approach from 10 cm above the cube
