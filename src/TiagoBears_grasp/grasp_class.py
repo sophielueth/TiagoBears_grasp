@@ -27,7 +27,7 @@ from cube_class import Cube
 
 # list of (current) TODO s:
 # - check opening and closing values for the endeffector
-# - check endeffector frame of groups, otherwise convert them, add orientation of approach angle 
+# - add orientation of approach angle 
 # - add error handling
 
 
@@ -41,6 +41,7 @@ class Grasp:
 		# self._look_at_pose_left = Pose(Point(0.626, 0.107, 0.882), Quaternion(0.774, -0.497, 0.356, -0.165)) # supposed to be sent to gripper_left_grasping_frame
 		# self._look_at_pose_right = Pose(Point(0.608, -0.130, 0.882), Quaternion(0.773, 0.494, 0.364, 0.162)) # supposed to be sent to gripper_right_grasping_frame
 
+		self._arm_straight_pose = [0, 0, 0, 0, 0, 0, 0] # in joint space
 		self._start_pose = [0.90, 0.00, 2.00, 1.35, -1.57, 0.70, 0.70] # in joint space
 		self._look_at_pose = [0.95, 0.30, 1.25, 1.35, -1.57, 0.70, 0.70]# in joint space
 
@@ -60,7 +61,6 @@ class Grasp:
 		self.move_group_right = moveit_commander.MoveGroupCommander(group_name_right)
 
 		## Create a `DisplayTrajectory`_ ROS publisher which is used to display trajectories in Rviz:
-		# very much later TODO: check whether I can have one topic to publish both trajectories
 		self.display_trajectory_publisher = rospy.Publisher('/move_group/display_planned_path',
 		                                               moveit_msgs.msg.DisplayTrajectory,
 		                                               queue_size=20)
@@ -116,10 +116,12 @@ class Grasp:
 		self._retract(use_left, place_poses[0])
 
 	def move_left_to_start_position(self):
+		self.move_group_left.go(self._arm_straight_pose, wait=True)
 		self.move_group_left.go(self._start_pose, wait=True)
 		self.move_group_left.stop() # to ensure there is not residual movement
 
 	def move_right_to_start_position(self):
+		self.move_group_right.go(self._arm_straight_pose, wait=True)
 		self.move_group_right.go(self._start_pose, wait=True)
 		self.move_group_right.stop() # to ensure there is not residual movement
 
@@ -200,14 +202,24 @@ class Grasp:
 
 	def _get_pre_pickplace_poses(self, cube_pose):
 		target_pose = copy.deepcopy(cube_pose)
-		# TODO: use self._approach_angle to calculate it
-		R = np.array([[1,  0,  0, 0],
-					  [0,  1, -1, 0],
-					  [1, -1, -1, 0],
-					  [0,  0,  0, np.sqrt(2)]]) / np.sqrt(2)# TODO: adjust orientation to the side of the cube to approach
-		target_pose.orientation = Quaternion(*tr.quaternion_from_matrix(R)[:]) 
+		
+		# TODO: check orientation to the side of the cube to approach
+		cos_aa = np.cos(self._approach_angle)
+		sin_aa = np.sin(self._approach_angle)
+
+		R_approach_angle = np.array([[cos_aa,  0, sin_aa, 0],
+									 [0, 	   1,      0, 0],
+									 [-sin_aa, 0, cos_aa, 0],
+									 [0,	   0,      0, 1]])
+
+
+		# rotate cube's orientation around own y-axis by approach_angle (check order within multiplication function, approach angle should be local rotation, i. e. last)
+		q_approach_angle = tr.quaternion_from_matrix(R_approach_angle)
+		target_pose.orientation = Quaternion(*tr.quaternion_multiply(target_pose.orientation, q_approach_angle)[:])
 		
 		pre_target_pose = copy.deepcopy(target_pose)
 		pre_target_pose.position.z += 0.1 # have the end-effector approach from 10 cm above the cube
 
 		return [pre_target_pose, target_pose]
+
+		
