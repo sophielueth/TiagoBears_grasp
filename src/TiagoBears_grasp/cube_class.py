@@ -3,14 +3,16 @@ import rospy
 
 from std_msgs.msg import String # for color
 from nav_msgs.msg import Odometry # for pose
-from geometry_msgs.msg import Quaternion
+from geometry_msgs.msg import Quaternion, PoseStamped, Pose, TransformStamped
 
 from collections import deque
 from enum import Enum
 
 import tf.transformations as tr
+import tf2_ros
+import tf2_geometry_msgs
+
 import numpy as np
-np.set_printoptions(precision=2, suppress=True)
 
 class Color(Enum):
 	# 0,     1,    2,      3,      4,      5,
@@ -112,17 +114,31 @@ class Cube:
 
 		self.pose = None
 		self._pose_topic = '/cube_{0}_odom'.format(id)
-		# continuously update the pose:
 		# subscribe to the pose estimation topic
 		self.pose_sub=rospy.Subscriber(self._pose_topic, Odometry, self.update_pose, queue_size=1)
-		self._pose_topic_updated = '/cube_{0}_odom_updated'.format(id)
-		self.pose_pub=rospy.Publisher(self._pose_topic_updated, Odometry, queue_size=1)
+		# create a new trasnform broadcaster for the updated cube pose
+		self.pose_broadcaster = tf2_ros.TransformBroadcaster()
 		
 		self._color_topic='/cube_{0}_color'.format(id)
 		# get the top color from the color detection node
 		# self.color= rospy.wait_for_message(self._color_topic, String)
 		# create the color map
 		# self._colormap = ColorMap(self.color_topic)
+
+		# create a buffer and a transform listener
+		self.tf_buffer = tf2_ros.Buffer()
+		self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
+
+		# create pre-grasp pose in the cube frame
+		self.pre_grasp_pose = Pose()
+		self.pre_grasp_pose.position.x = -0.05
+		self.pre_grasp_pose.position.z = 0.03
+		self.pre_grasp_pose.orientation.y = 0.382
+		self.pre_grasp_pose.orientation.w = 0.923
+		# publisher for the pre-grasp pose
+		self.pre_grasp_pose_pub = rospy.Publisher('/cube_{0}_pre_grasp_pose'.format(id), Odometry, queue_size=1)
+		# update grasp poses
+		self.counter = 0
 
 	def correct_cube_rotation_matrix(self, R):
 		for i in range(3,0,-1):
@@ -144,8 +160,43 @@ class Cube:
 		new_R=self.correct_cube_rotation_matrix(R)
 		new_q=Quaternion(*tr.quaternion_from_matrix(new_R)[:])
 		msg.pose.pose.orientation=new_q
-		# self.pose_pub.publish(msg)
-		self.pose = msg.pose.pose
+		# define trasnform from cube to base_footprint
+		transform=TransformStamped()
+		transform.header.stamp=msg.header.stamp
+		transform.header.frame_id='base_footprint'
+		transform.child_frame_id='cube_{0}_odom_updated'.format(self.id)
+		transform.transform.translation.x=msg.pose.pose.position.x
+		transform.transform.translation.y=msg.pose.pose.position.y
+		transform.transform.translation.z=msg.pose.pose.position.z
+		transform.transform.rotation.x=new_q.x
+		transform.transform.rotation.y=new_q.y
+		transform.transform.rotation.z=new_q.z
+		transform.transform.rotation.w=new_q.w
+		# broadcast the new transform
+		self.pose_broadcaster.sendTransform(transform)
+		while not self.update_grasp_poses():
+			rospy.sleep(0.1)
+	
+	def update_grasp_poses(self):
+		# check if the transform is available
+		try:
+			# transform the pre-grasp pose to the updated cube frame
+			transform=self.tf_buffer.lookup_transform('base_footprint', 'cube_{0}_odom_updated'.format(self.id), rospy.Time(0))
+		except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+			return False
+		pre_grasp_pose=PoseStamped()
+		pre_grasp_pose.header.stamp=rospy.Time.now()
+		pre_grasp_pose.header.frame_id='cube_{0}_odom_updated'.format(self.id)
+		pre_grasp_pose.pose=self.pre_grasp_pose
+		transformed_pre_grasp_pose = tf2_geometry_msgs.do_transform_pose(pre_grasp_pose, transform)
+		# create odometry message
+		odom_msg = Odometry()
+		odom_msg.header.stamp = rospy.Time.now()
+		odom_msg.header.frame_id = 'base_footprint'
+		odom_msg.pose.pose = transformed_pre_grasp_pose.pose
+		# publish the transformed pre-grasp pose
+		self.pre_grasp_pose_pub.publish(odom_msg)
+		return True
 
 	def update_color(self):
 		""" A function to update the colormap using the color detection node when needed

@@ -42,8 +42,8 @@ class Grasp:
 		# self._look_at_pose_right = Pose(Point(0.608, -0.130, 0.882), Quaternion(0.773, 0.494, 0.364, 0.162)) # supposed to be sent to gripper_right_grasping_frame
 
 		self._arm_straight_pose = [0, 0, 0, 0, 0, 0, 0] # in joint space
-		self._start_pose = [0.90, 0.00, 2.00, 1.35, -1.57, 0.70, 0.70] # in joint space
-		self._look_at_pose = [0.95, 0.30, 1.25, 1.35, -1.57, 0.70, 0.70]# in joint space
+		self._start_pose = [0.50, 0.00, 2.00, 1.35, -1.57, 0.70, 0.70] # in joint space
+		self._look_at_pose = [0.50, 0.30, 1.25, 1.35, -1.57, 0.70, 0.70]# in joint space
 
 		## initialize move it for both arms
 		moveit_commander.roscpp_initialize(sys.argv)
