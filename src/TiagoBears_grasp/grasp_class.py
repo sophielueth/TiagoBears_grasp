@@ -102,7 +102,7 @@ class Grasp:
 		move_group = self.move_group_left if use_left else self.move_group_right
 
 		# create pre-pick (10 cm above pick posistion) & pick position
-		pick_poses = self._get_pre_pickplace_poses(cube.pose)
+		pick_poses = self._get_pre_pickplace_poses(cube._pre_grasp_pose)
 		self._execute_pick(use_left, pick_poses)
 		
 		# retract via the pre-pick pose to the watch position
@@ -209,8 +209,7 @@ class Grasp:
 	def _get_pre_pickplace_poses(self, cube_pose):
 		target_pose = copy.deepcopy(cube_pose)
 		# TODO: hardcoded to avoid collision:
-		target_pose.position.z += 0.04
-
+# 		target_pose.position.z += 0.04
 
 		# TODO: check orientation to the side of the cube to approach
 		cos_aa = np.cos(self._approach_angle)
