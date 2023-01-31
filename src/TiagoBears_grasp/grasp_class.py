@@ -209,8 +209,7 @@ class Grasp:
 	def _get_pre_pickplace_poses(self, cube_pose):
 		target_pose = copy.deepcopy(cube_pose)
 		# TODO: hardcoded to avoid collision:
-		target_pose.position.x -= 0.02
-		target_pose.position.z += 0.02
+		target_pose.position.z += 0.04
 
 
 		# TODO: check orientation to the side of the cube to approach

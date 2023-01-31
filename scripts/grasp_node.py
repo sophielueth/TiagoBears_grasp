@@ -25,7 +25,7 @@ if __name__ == '__main__':
         for index, cube in enumerate(cubes):
             while cube.pose == None: pass
             # dist_sq = cube.pose.position.x**2 + cube.pose.position.y**2 + (cube.pose.position.z-1.0)**2
-            dist_sq = cube.pose.position.x
+            dist_sq = (cube.pose.position.x-0.2)**2 + (abs(cube.pose.position.y) - 0.375)**2
             if dist_sq < min_dist_sq:
                 min_dist_sq = dist_sq
                 min_ind = index
