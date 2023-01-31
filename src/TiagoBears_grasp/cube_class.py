@@ -131,8 +131,8 @@ class Cube:
 
 		# create pre-grasp pose in the cube frame
 		self.pre_grasp_pose = Pose()
-		self.pre_grasp_pose.position.x = -0.05
-		self.pre_grasp_pose.position.z = 0.03
+		self.pre_grasp_pose.position.x = -0.02
+		self.pre_grasp_pose.position.z = 0.01
 		self.pre_grasp_pose.orientation.y = 0.382
 		self.pre_grasp_pose.orientation.w = 0.923
 		# publisher for the pre-grasp pose
@@ -160,6 +160,7 @@ class Cube:
 		new_R=self.correct_cube_rotation_matrix(R)
 		new_q=Quaternion(*tr.quaternion_from_matrix(new_R)[:])
 		msg.pose.pose.orientation=new_q
+		self.pose = msg.pose.pose
 		# define trasnform from cube to base_footprint
 		transform=TransformStamped()
 		transform.header.stamp=msg.header.stamp

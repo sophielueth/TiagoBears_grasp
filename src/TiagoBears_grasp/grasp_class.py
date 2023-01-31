@@ -102,7 +102,7 @@ class Grasp:
 		move_group = self.move_group_left if use_left else self.move_group_right
 
 		# create pre-pick (10 cm above pick posistion) & pick position
-		pick_poses = self._get_pre_pickplace_poses(cube._pre_grasp_pose)
+		pick_poses = self._get_pre_pickplace_poses(True, cube.transformed_pre_grasp_pose.pose)
 		self._execute_pick(use_left, pick_poses)
 		
 		# retract via the pre-pick pose to the watch position
@@ -115,7 +115,7 @@ class Grasp:
 		move_group = self.move_group_left if use_left else self.move_group_right
 
 		# create pre-place (10 cm above place posistion) & place position
-		place_poses = self._get_pre_pickplace_poses(place_pose)
+		place_poses = self._get_pre_pickplace_poses(False, place_pose)
 		self._execute_place(use_left, place_poses)
 
 		# create post place position (same as pre-place position) and retract
@@ -206,14 +206,17 @@ class Grasp:
 		# move to watch position
 		self.move_left_to_watch_position() if use_left else self.move_right_to_watch_position()
 
-	def _get_pre_pickplace_poses(self, cube_pose):
+	def _get_pre_pickplace_poses(self, if_pick, cube_pose):
 		target_pose = copy.deepcopy(cube_pose)
 		# TODO: hardcoded to avoid collision:
 # 		target_pose.position.z += 0.04
 
-		# TODO: check orientation to the side of the cube to approach
-		cos_aa = np.cos(self._approach_angle)
-		sin_aa = np.sin(self._approach_angle)
+		if not if_pick:
+			cos_aa = np.cos(self._approach_angle)
+			sin_aa = np.sin(self._approach_angle)
+		else:
+			cos_aa = 1
+			sin_aa = 0
 
 		R_approach_angle = np.array([[cos_aa,  0, sin_aa, 0],
 									 [0, 	   1,      0, 0],
