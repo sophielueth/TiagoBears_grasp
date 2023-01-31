@@ -188,12 +188,12 @@ class Cube:
 		pre_grasp_pose.header.stamp=rospy.Time.now()
 		pre_grasp_pose.header.frame_id='cube_{0}_odom_updated'.format(self.id)
 		pre_grasp_pose.pose=self.pre_grasp_pose
-		transformed_pre_grasp_pose = tf2_geometry_msgs.do_transform_pose(pre_grasp_pose, transform)
+		self.transformed_pre_grasp_pose = tf2_geometry_msgs.do_transform_pose(pre_grasp_pose, transform)
 		# create odometry message
 		odom_msg = Odometry()
 		odom_msg.header.stamp = rospy.Time.now()
 		odom_msg.header.frame_id = 'base_footprint'
-		odom_msg.pose.pose = transformed_pre_grasp_pose.pose
+		odom_msg.pose.pose = self.transformed_pre_grasp_pose.pose
 		# publish the transformed pre-grasp pose
 		self.pre_grasp_pose_pub.publish(odom_msg)
 		return True
