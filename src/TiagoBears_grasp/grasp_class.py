@@ -7,7 +7,7 @@ import numpy as np
 import rospy
 import moveit_commander
 import moveit_msgs.msg
-from geometry_msgs.msg import Pose, Point, Quaternion
+from geometry_msgs.msg import Pose, Point, Quaternion, PoseStamped
 from tf import transformations as tr
 
 from std_msgs.msg import Header
@@ -34,7 +34,6 @@ from cube_class import Cube
 class Grasp:
 	def __init__(self):
 		# later TODO add to param server and read out
-		self._approach_angle = pi / 4 # in rad
 		self._cube_length = 0.045 # in m
 		self._height_over_place = 0.005 # in m 
 
@@ -59,17 +58,18 @@ class Grasp:
 		group_name_right = "arm_right"
 		self.move_group_left = moveit_commander.MoveGroupCommander(group_name_left)
 		self.move_group_right = moveit_commander.MoveGroupCommander(group_name_right)
+		self.move_group_left.set_planning_time(1.0)
+		self.move_group_right.set_planning_time(1.0)
+		self.move_group_left.set_num_planning_attempts(5)
+		self.move_group_right.set_num_planning_attempts(5)
 
 		## Create a `DisplayTrajectory`_ ROS publisher which is used to display trajectories in Rviz:
 		self.display_trajectory_publisher = rospy.Publisher('/move_group/display_planned_path',
 		                                               moveit_msgs.msg.DisplayTrajectory,
 		                                               queue_size=20)
 
-		# move torso to joint position 0.25
+		# init to move torso to joint position 0.25
 		torso_pub = rospy.Publisher('/torso_controller/command', JointTrajectory)
-		msg = JointTrajectory(joint_names=['torso_lift_joint'], 
-							  points=[JointTrajectoryPoint(positions=[0.25], time_from_start=rospy.Duration.from_sec(1))])
-		torso_pub.publish(msg)
 
 		# Set end_effector_link frame to gripper_left_grasping_frame
 		self.move_group_left.set_end_effector_link('gripper_left_grasping_frame')
@@ -93,6 +93,24 @@ class Grasp:
 		self.open_gripper(use_left=True)
 		self.open_gripper(use_left=False)
 
+		# actually move torso to joint position 0.25 after publisher has been set up
+		msg = JointTrajectory(joint_names=['torso_lift_joint'], 
+							  points=[JointTrajectoryPoint(positions=[0.25], time_from_start=rospy.Duration.from_sec(1))])
+		torso_pub.publish(msg)
+
+		self._rotate_0 = np.array([0, 0, 0, 1])
+		self._rotate_y_45_deg = np.array([0, 0.382, 0,  0.923])
+		self._rotate_z_90_degs = [self._rotate_0, 
+								  np.array([0, 0, 0.707002, 0.7072115]), 
+								  np.array([0, 0, 1, 0.0002963]), 
+								  np.array([0, 0, 0.707002, -0.7072115])]
+
+		# add table as collision object
+		p = Pose(Point(x=0.5, y=0, z=0), Quaternion())
+		ps = PoseStamped()
+		ps.header.frame_id = self.robot.get_planning_frame()
+		self.scene.add_box('table', ps, (0.6, 0.75, 0.5))
+
 	# seems ROS doesn't allow determining the argument and the output types
 	# def pick(self, cube: Cube) -> bool: 
 	def pick(self, cube):
@@ -102,11 +120,11 @@ class Grasp:
 		move_group = self.move_group_left if use_left else self.move_group_right
 
 		# create pre-pick (10 cm above pick posistion) & pick position
-		pick_poses = self._get_pre_pickplace_poses(True, cube.transformed_pre_grasp_pose.pose)
-		self._execute_pick(use_left, pick_poses)
+		pick_poses_list = self._get_pre_pickplace_poses(False, cube.pose)
+		used_pose = self._execute_pick(use_left, pick_poses_list)
 		
 		# retract via the pre-pick pose to the watch position
-		self._retract(use_left, pick_poses[0])
+		self._retract(use_left, used_pose)
 
 		return use_left
 
@@ -115,11 +133,11 @@ class Grasp:
 		move_group = self.move_group_left if use_left else self.move_group_right
 
 		# create pre-place (10 cm above place posistion) & place position
-		place_poses = self._get_pre_pickplace_poses(False, place_pose)
-		self._execute_place(use_left, place_poses)
+		place_poses_list = self._get_pre_pickplace_poses(False, place_pose)
+		used_pose = self._execute_place(use_left, place_poses_list)
 
 		# create post place position (same as pre-place position) and retract
-		self._retract(use_left, place_poses[0])
+		self._retract(use_left, used_pose)
 
 	def move_left_to_start_position(self):
 		self.move_group_left.go(self._arm_straight_pose, wait=True)
@@ -158,7 +176,7 @@ class Grasp:
 		header.stamp = rospy.Time.now()
 		goal.trajectory = JointTrajectory(header, joint_names, self._gripper_closed)
 		
-		goal.goal_time_tolerance = rospy.Duration.from_sec(1.0)
+		goal.goal_time_tolerance = rospy.Duration.from_sec(0.5)
 		
 		gripper_client.send_goal_and_wait(goal)
 
@@ -176,25 +194,38 @@ class Grasp:
 
 		gripper_client.send_goal_and_wait(goal)
 
-	def _execute_pick(self, use_left, pick_poses):
+	def _execute_pick(self, use_left, pick_poses_list):
 		move_group = self.move_group_left if use_left else self.move_group_right
 
-		plan, fraction = move_group.compute_cartesian_path(
-			pick_poses,  # waypoints to follow
-			0.01,  # eef_step
-			0.0)  # jump_threshold
+		used_pose = None # TODO add error handling if stays none
+		for pick_poses in pick_poses_list:
+			plan, fraction = move_group.compute_cartesian_path(
+				pick_poses,  # waypoints to follow
+				0.01,  # eef_step
+				0.0)  # jump_threshold
+			if fraction == 1: # could compute whole trajectory
+				used_pose = pick_poses[0]
+				break
+	
 		res = move_group.execute(plan, wait=True) # later TODO: Somehow enable that the other arm can be started while the first one is in movement
 		
 		self.close_gripper(use_left)
+		return used_pose
 
-	def _execute_place(self, use_left, place_poses):
+	def _execute_place(self, use_left, place_poses_list):
 		move_group = self.move_group_left if use_left else self.move_group_right
 
-		plan, fraction = move_group.compute_cartesian_path(place_poses, 0.01, 0.0)
-	
+		used_pose = None # TODO add error handling if stays none
+		for place_poses in place_poses_list:
+			plan, fraction = move_group.compute_cartesian_path(place_poses, 0.01, 0.0)
+			if fraction == 1: # could compute whole trajectory
+				used_pose = place_poses[0]
+				break
+
 		res = move_group.execute(plan, wait=True)
 		
 		self.open_gripper(use_left)
+		return used_pose
 
 	def _retract(self, use_left, retract_pose):
 		move_group = self.move_group_left if use_left else self.move_group_right
@@ -207,30 +238,28 @@ class Grasp:
 		self.move_left_to_watch_position() if use_left else self.move_right_to_watch_position()
 
 	def _get_pre_pickplace_poses(self, if_pick, cube_pose):
-		target_pose = copy.deepcopy(cube_pose)
-		# TODO: hardcoded to avoid collision:
-# 		target_pose.position.z += 0.04
-
-		if not if_pick:
-			cos_aa = np.cos(self._approach_angle)
-			sin_aa = np.sin(self._approach_angle)
-		else:
-			cos_aa = 1
-			sin_aa = 0
-
-		R_approach_angle = np.array([[cos_aa,  0, sin_aa, 0],
-									 [0, 	   1,      0, 0],
-									 [-sin_aa, 0, cos_aa, 0],
-									 [0,	   0,      0, 1]])
-
-		# rotate cube's orientation around own y-axis by approach_angle (check order within multiplication function, approach angle should be local rotation, i. e. last)
-		q_approach_angle = tr.quaternion_from_matrix(R_approach_angle)
-		q_target_pose = np.array([target_pose.orientation.x, target_pose.orientation.y, target_pose.orientation.z, target_pose.orientation.w])
-		target_pose.orientation = Quaternion(*tr.quaternion_multiply(q_target_pose, q_approach_angle)[:])
+		poses = []
 		
-		pre_target_pose = copy.deepcopy(target_pose)
-		pre_target_pose.position.z += 0.1 # have the end-effector approach from 10 cm above the cube
-
-		return [pre_target_pose, target_pose]
-
+		for i in range(1, 4): # check approach from all 4 sides of the cube
+			target_pose = copy.deepcopy(cube_pose)
+			q = quat_to_array(target_pose.orientation)
+			q = tr.quaternion_multiply(q, self._rotate_z_90_degs[i])
 		
+			# approach angle, in case wanted
+			if not if_pick:
+				q = tr.quaternion_multiply(q, self._rotate_y_45_deg)
+
+			target_pose.orientation = array_to_quat(q)
+			pre_pose = copy.deepcopy(target_pose)
+			pre_pose.position.z += 0.1 # have the end-effector approach from 10 cm above the cube
+
+			poses.append([pre_pose, target_pose])
+
+		return poses
+
+
+def array_to_quat(quat_arr):
+	return Quaternion(*quat_arr[:])
+
+def quat_to_array(quat):
+	return np.array([quat.x, quat.y, quat.z, quat.w])

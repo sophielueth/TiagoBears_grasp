@@ -17,28 +17,28 @@ if __name__ == '__main__':
         for i in range(28):
             cubes.append(Cube(i))
 
-    place_pose_left = Pose(position=Point(x=0.765, y=0.335, z=0.505), orientation=Quaternion(w=1.0))
-    place_pose_right = Pose(position=Point(x=0.765, y=-0.335, z=0.505), orientation=Quaternion(w=1.0))
-     
-    while len(cubes) > 23:
-        # choose closest cube
-        min_dist_sq = 100 #m, should be impossible
-        min_ind = -1
-        for index, cube in enumerate(cubes):
-            while cube.pose == None: rospy.sleep(0.1)
-            # dist_sq = cube.pose.position.x**2 + cube.pose.position.y**2 + (cube.pose.position.z-1.0)**2
-            dist_sq = (cube.pose.position.x-0.2)**2 + (abs(cube.pose.position.y) - 0.375)**2
-            if dist_sq < min_dist_sq:
-                min_dist_sq = dist_sq
-                min_ind = index
+        place_pose_left = Pose(position=Point(x=0.765, y=0.335, z=0.52), orientation=Quaternion(w=1.0))
+        place_pose_right = Pose(position=Point(x=0.765, y=-0.335, z=0.52), orientation=Quaternion(w=1.0))
         
-        print ('=== Trying to pick cube %d ===', min_ind)
-        cube = cubes.pop(min_ind)
-        try:
-            use_left = grasp.pick(cube)
+        while len(cubes) > 23:
+            # choose closest cube
+            min_dist_sq = 100 #m, should be impossible
+            min_ind = -1
+            for index, cube in enumerate(cubes):
+                while cube.pose == None: rospy.sleep(0.1)
+                # dist_sq = cube.pose.position.x**2 + cube.pose.position.y**2 + (cube.pose.position.z-1.0)**2
+                dist_sq = (cube.pose.position.x-0.2)**2 + (abs(cube.pose.position.y) - 0.375)**2
+                if dist_sq < min_dist_sq:
+                    min_dist_sq = dist_sq
+                    min_ind = index
             
-            place_pose = place_pose_left if use_left else place_pose_right
-            print ('=== Trying to pick cube %d ===', min_ind)
+            print '=== Trying to pick cube {0} ==='.format(min_ind)
+            cube = cubes.pop(min_ind)
+            try:
+                use_left = grasp.pick(cube)
+                
+                place_pose = place_pose_left if use_left else place_pose_right
+                print '=== Trying to place cube {0} ==='.format(min_ind)
 
                 grasp.place(use_left, place_pose)
 
@@ -57,7 +57,7 @@ if __name__ == '__main__':
                         place_pose.position.y = -0.335
 
             except rospy.ROSInterruptException as e:
-                print('an exception has occured:')
-                print(e)
-        except KeyboardInterrupt:
-            sys.exit()
+                    print('an exception has occured:')
+                    print(e)
+    except KeyboardInterrupt:
+        sys.exit()
