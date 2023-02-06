@@ -102,8 +102,8 @@ class Grasp:
 		self._rotate_y_45_deg = np.array([0, 0.382, 0,  0.923])
 		self._rotate_z_90_degs = [self._rotate_0, 
 								  np.array([0, 0, 0.707002, 0.7072115]), 
-								  np.array([0, 0, 1, 0.0002963]), 
-								  np.array([0, 0, 0.707002, -0.7072115])]
+								  np.array([0, 0, 0.707002, -0.7072115]),
+								   np.array([0, 0, 1, 0.0002963])]
 
 		# add table as collision object
 		p = Pose(Point(x=0.5, y=0, z=0), Quaternion())
@@ -240,10 +240,10 @@ class Grasp:
 	def _get_pre_pickplace_poses(self, if_pick, cube_pose):
 		poses = []
 		
-		for i in range(1, 4): # check approach from all 4 sides of the cube
+		for rotate_z in self._rotate_z_90_degs:	
 			target_pose = copy.deepcopy(cube_pose)
 			q = quat_to_array(target_pose.orientation)
-			q = tr.quaternion_multiply(q, self._rotate_z_90_degs[i])
+			q = tr.quaternion_multiply(q, rotate_z)
 		
 			# approach angle, in case wanted
 			if not if_pick:
