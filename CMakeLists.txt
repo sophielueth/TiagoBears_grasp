@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   actionlib
 
   gazebo_ros
+  TiagoBears_plan
 )
 catkin_package(
   CATKIN_DEPENDS
@@ -26,6 +27,7 @@ catkin_package(
     tf
     moveit_commander
     actionlib
+    TiagoBears_plan
 )
 
 catkin_install_python(PROGRAMS scripts/test_cubes.py
