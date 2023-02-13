@@ -4,14 +4,18 @@ import sys
 import rospy
 from TiagoBears_grasp.grasp_class import Grasp
 from TiagoBears_grasp.cube_class import Cube
+from TiagoBears_grasp.setup_class import setup
 
 from geometry_msgs.msg import Pose, Point, Quaternion
 
 if __name__ == '__main__':
     try:
         rospy.init_node('grasp')
+        robot, scene, disp_traj_pub = setup()
 
-        grasp = Grasp()
+        grasp_left = Grasp(True, disp_traj_pub)
+        grasp_right = Grasp(False, disp_traj_pub)
+
         cubes = []
 
         for i in range(28):
@@ -35,12 +39,13 @@ if __name__ == '__main__':
             print '=== Trying to pick cube {0} ==='.format(min_ind)
             cube = cubes.pop(min_ind)
             try:
-                use_left = grasp.pick(cube)
+                use_left = True if cube.pose.position.y > 0 else False
+                grasp_left.pick(cube) if use_left else grasp_right.pick(cube)
                 
                 place_pose = place_pose_left if use_left else place_pose_right
                 print '=== Trying to place cube {0} ==='.format(min_ind)
 
-                grasp.place(use_left, place_pose)
+                grasp_left.place(place_pose) if use_left else grasp_right.place(place_pose)
 
                 # update pose
                 if use_left:

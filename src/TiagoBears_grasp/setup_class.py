@@ -34,3 +34,5 @@ def setup():
 		msg = JointTrajectory(joint_names=['torso_lift_joint'], points=[JointTrajectoryPoint(positions=[0.25], time_from_start=rospy.Duration.from_sec(1))])
         rospy.sleep(3) # TODO; decrease? 
         torso_pub.publish(msg)
+
+		return robot, scene, display_trajectory_publisher
