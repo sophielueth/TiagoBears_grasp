@@ -1,4 +1,5 @@
 import rospy
+import sys
 import moveit_commander
 import moveit_msgs.msg
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
@@ -32,7 +33,7 @@ def setup():
 
         # actually move torso to joint position 0.25 after publisher has been set up
 		msg = JointTrajectory(joint_names=['torso_lift_joint'], points=[JointTrajectoryPoint(positions=[0.25], time_from_start=rospy.Duration.from_sec(1))])
-        rospy.sleep(3) # TODO; decrease? 
-        torso_pub.publish(msg)
+		rospy.sleep(3) # TODO; decrease? 
+		torso_pub.publish(msg)
 
 		return robot, scene, display_trajectory_publisher

@@ -123,7 +123,7 @@ class Grasp:
 
 	def _execute_pick(self, pick_poses_list):
 		# TODO add error handling 
-		for pick_poses in pick_poses_list:
+		for pick_poses in pick_poses_list: # if no good path found, remove the -0.45 from the planning
 			plan, fraction = self.move_group.compute_cartesian_path(
 				pick_poses,  # waypoints to follow
 				0.01,  # eef_step
@@ -172,7 +172,9 @@ class Grasp:
 			# get hom rot matrix from quaternion
 			R = tr.quaternion_matrix(q)
 			#  move target pose to -10cm in x direction in its own frame
-			(approach_pose.position.x, approach_pose.position.y, approach_pose.position.z) = (approach_pose.position.x, approach_pose.position.y, approach_pose.position.z) - 0.1 * R[:3, 0]
+			(approach_pose.position.x, approach_pose.position.y, approach_pose.position.z) = (approach_pose.position.x, approach_pose.position.y, approach_pose.position.z) - 0.05 * R[:3, 0]
+
+			q = tr.quaternion_multiply(q, self._rotate_y_45_deg) # approach angle to horizontal
 
 			# have the end-effector approach from 10 cm above the cube
 			target_pose.orientation = approach_pose.orientation = array_to_quat(q)
