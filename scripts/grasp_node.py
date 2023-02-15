@@ -21,8 +21,8 @@ if __name__ == '__main__':
         for i in range(28):
             cubes.append(Cube(i))
 
-        place_pose_left = Pose(position=Point(x=0.765, y=0.335, z=0.52), orientation=Quaternion(w=1.0))
-        place_pose_right = Pose(position=Point(x=0.765, y=-0.335, z=0.52), orientation=Quaternion(w=1.0))
+        place_pose_left = Pose(position=Point(x=0.76, y=0.33, z=0.52), orientation=Quaternion(w=1.0))
+        place_pose_right = Pose(position=Point(x=0.76, y=-0.33, z=0.52), orientation=Quaternion(w=1.0))
         
         while len(cubes) > 23:
             # choose closest cube
