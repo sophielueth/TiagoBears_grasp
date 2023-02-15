@@ -60,9 +60,12 @@ class Grasp:
 		self._gripper_client = SimpleActionClient(ns=ns, ActionSpec=FollowJointTrajectoryAction)
 		self._gripper_client.wait_for_server()
 
-		self._gripper_closed = [JointTrajectoryPoint(positions=[0.5], time_from_start=rospy.Duration.from_sec(2))]
-		self._gripper_opened = [JointTrajectoryPoint(positions=[0.0], time_from_start=rospy.Duration.from_sec(2))]
-		self._gripper_joint_names = ['gripper_left_finger_joint'] if is_left else ['gripper_right_finger_joint']
+		# self._gripper_closed = [JointTrajectoryPoint(positions=[0.5], time_from_start=rospy.Duration.from_sec(2))]
+		# self._gripper_opened = [JointTrajectoryPoint(positions=[0.0], time_from_start=rospy.Duration.from_sec(2))]
+		self._gripper_closed = [JointTrajectoryPoint(positions=[0.02, 0.02], time_from_start=rospy.Duration.from_sec(2))]
+		self._gripper_opened = [JointTrajectoryPoint(positions=[0.04, 0.04], time_from_start=rospy.Duration.from_sec(2))]
+		# # self._gripper_joint_names = ['gripper_left_finger_joint'] if is_left else ['gripper_right_finger_joint']
+		self._gripper_joint_names = ['gripper_left_left_finger_joint', 'gripper_left_right_finger_joint'] if is_left else ['gripper_right_left_finger_joint', 'gripper_right_right_finger_joint']
 
 		self.set_gripper(self._gripper_opened)
 
@@ -171,8 +174,10 @@ class Grasp:
 			# get hom rot matrix from quaternion
 			R = tr.quaternion_matrix(q)
 			# hardcode a grasping frame
-			(target_pose.position.x, target_pose.position.y, target_pose.position.z) = (target_pose.position.x, target_pose.position.y, target_pose.position.z) - 0.02 * R[:3, 0] # -2 cm in cube's x frame
-			(target_pose.position.x, target_pose.position.y, target_pose.position.z) = (target_pose.position.x, target_pose.position.y, target_pose.position.z) + 0.02 * R[:3, 2] # +2 cm in cube's z frame
+			# (target_pose.position.x, target_pose.position.y, target_pose.position.z) = (target_pose.position.x, target_pose.position.y, target_pose.position.z) - 0.02 * R[:3, 0] # -2 cm in cube's x frame
+			# (target_pose.position.x, target_pose.position.y, target_pose.position.z) = (target_pose.position.x, target_pose.position.y, target_pose.position.z) + 0.02 * R[:3, 2] # +2 cm in cube's z frame
+			(target_pose.position.x, target_pose.position.y, target_pose.position.z) = (target_pose.position.x, target_pose.position.y, target_pose.position.z) - 0.06 * R[:3, 0] # -2 cm in cube's x frame
+			(target_pose.position.x, target_pose.position.y, target_pose.position.z) = (target_pose.position.x, target_pose.position.y, target_pose.position.z) + 0.06 * R[:3, 2] # +2 cm in cube's z frame
 
 			#  move target pose to -5cm in x direction in its own frame
 			approach_pose = copy.deepcopy(target_pose)
