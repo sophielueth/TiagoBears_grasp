@@ -24,14 +24,11 @@ from cube_class import Cube
 # - add a smart wait pose
 
 # list of (current) TODO s:
-# - check opening and closing values for the endeffector
-# - add orientation of approach angle 
-# - add error handling
+# - add error handling: check whether cube has been picked up
 
 
 class Grasp:
 	def __init__(self, is_left, traj_pub):
-		# later TODO add to param server and read out
 		self._cube_length = 0.045 # in m
 		self._height_over_place = 0.005 # in m 
 
@@ -63,8 +60,7 @@ class Grasp:
 		self._gripper_client = SimpleActionClient(ns=ns, ActionSpec=FollowJointTrajectoryAction)
 		self._gripper_client.wait_for_server()
 
-		# TODO: check closed values
-		self._gripper_closed = [JointTrajectoryPoint(positions=[0.4], time_from_start=rospy.Duration.from_sec(2))]
+		self._gripper_closed = [JointTrajectoryPoint(positions=[0.5], time_from_start=rospy.Duration.from_sec(2))]
 		self._gripper_opened = [JointTrajectoryPoint(positions=[0.0], time_from_start=rospy.Duration.from_sec(2))]
 		self._gripper_joint_names = ['gripper_left_finger_joint'] if is_left else ['gripper_right_finger_joint']
 
@@ -91,9 +87,6 @@ class Grasp:
 		return 0 # should correspond to success
 
 	def place(self, place_pose):
-		# select arm to use
-		move_group = self.move_group_left if use_left else self.move_group_right
-
 		# create pre-place (10 cm above place posistion) & place position
 		place_poses_list = self._get_pre_place_poses(place_pose)
 		self._execute_place(place_poses_list)
@@ -122,25 +115,31 @@ class Grasp:
 		self._gripper_client.send_goal_and_wait(goal)
 
 	def _execute_pick(self, pick_poses_list):
-		# TODO add error handling 
-		for pick_poses in pick_poses_list: # if no good path found, remove the -0.45 from the planning
-			plan, fraction = self.move_group.compute_cartesian_path(
-				pick_poses,  # waypoints to follow
-				0.01,  # eef_step
-				0.0)  # jump_threshold
-			if fraction == 1: # could compute whole trajectory
-				used_pose = pick_poses[0]
+		remove_approach_pose = False
+		ik_solved = False
+		for i in range(2):
+			for pick_poses in pick_poses_list: # if no good path found, remove the -0.05 cm x point from the planning (maybe at another one at -0.02, that can then be chosen) 
+				if remove_approach_pose:
+					pick_poses = [pick_poses[0], pick_poses[-1]]
+				plan, fraction = self.move_group.compute_cartesian_path(
+					pick_poses,  # waypoints to follow
+					0.01,  # eef_step
+					0.0)  # jump_threshold
+				if fraction == 1: # could compute whole trajectory
+					ik_solved = True
+					break
+			if ik_solved:
 				break
+			else:
+				remove_approach_pose = True
 	
-		res = self.move_group.execute(plan, wait=True) # later TODO: Somehow enable that the other arm can be started while the first one is in movement
+		res = self.move_group.execute(plan, wait=True)
 		
 		self.set_gripper(self._gripper_closed)
 
 		self._retract([pick_poses[0]])
-		return used_pose
 
 	def _execute_place(self, place_poses_list):
-		# TODO: add error handling
 		for place_poses in place_poses_list:
 			plan, fraction = self.move_group.compute_cartesian_path(place_poses, 0.01, 0.0)
 			if fraction == 1: # could compute whole trajectory
@@ -164,14 +163,19 @@ class Grasp:
 
 		for rotate_z in self._rotate_z_90_degs:
 			target_pose = copy.deepcopy(cube_pose)
-			approach_pose = copy.deepcopy(cube_pose)
+			approach_pose = copy.deepcopy(target_pose)
 
 			q = quat_to_array(target_pose.orientation)
 			# approach from left, right, front or back
 			q = tr.quaternion_multiply(q, rotate_z)
 			# get hom rot matrix from quaternion
 			R = tr.quaternion_matrix(q)
-			#  move target pose to -10cm in x direction in its own frame
+			# hardcode a grasping frame
+			(target_pose.position.x, target_pose.position.y, target_pose.position.z) = (target_pose.position.x, target_pose.position.y, target_pose.position.z) - 0.02 * R[:3, 0] # -2 cm in cube's x frame
+			(target_pose.position.x, target_pose.position.y, target_pose.position.z) = (target_pose.position.x, target_pose.position.y, target_pose.position.z) + 0.02 * R[:3, 2] # +2 cm in cube's z frame
+
+			#  move target pose to -5cm in x direction in its own frame
+			approach_pose = copy.deepcopy(target_pose)
 			(approach_pose.position.x, approach_pose.position.y, approach_pose.position.z) = (approach_pose.position.x, approach_pose.position.y, approach_pose.position.z) - 0.05 * R[:3, 0]
 
 			q = tr.quaternion_multiply(q, self._rotate_y_45_deg) # approach angle to horizontal
@@ -192,6 +196,11 @@ class Grasp:
 			target_pose = copy.deepcopy(cube_pose)
 			q = quat_to_array(target_pose.orientation)
 			q = tr.quaternion_multiply(q, rotate_z) # approach from left, right, front or back
+
+			R = tr.quaternion_matrix(q)
+			# hardcode a grasping frame
+			(target_pose.position.x, target_pose.position.y, target_pose.position.z) = (target_pose.position.x, target_pose.position.y, target_pose.position.z) - 0.02 * R[:3, 0] # -2 cm in cube's x frame
+			(target_pose.position.x, target_pose.position.y, target_pose.position.z) = (target_pose.position.x, target_pose.position.y, target_pose.position.z) + 0.02 * R[:3, 2] # +2 cm in cube's z frame
 
 			q = tr.quaternion_multiply(q, self._rotate_y_45_deg) # approach angle to horizontal
 
