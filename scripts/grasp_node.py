@@ -2,9 +2,10 @@
 
 import sys
 import rospy
+import copy
 from TiagoBears_grasp.grasp_class import Grasp
 from TiagoBears_grasp.cube_class import Cube
-from TiagoBears_grasp.setup_class import setup
+from TiagoBears_grasp.setup_class import *
 
 from geometry_msgs.msg import Pose, Point, Quaternion
 
@@ -39,7 +40,9 @@ if __name__ == '__main__':
             print '=== Trying to pick cube {0} ==='.format(min_ind)
             cube = cubes.pop(min_ind)
             try:
+                add_cubes_for_collision_but_not(cube.id, cubes, scene, robot.get_planning_frame())
                 use_left = True if cube.pose.position.y > 0 else False
+
                 grasp_left.pick(cube) if use_left else grasp_right.pick(cube)
                 
                 place_pose = place_pose_left if use_left else place_pose_right
@@ -64,5 +67,8 @@ if __name__ == '__main__':
             except rospy.ROSInterruptException as e:
                     print('an exception has occured:')
                     print(e)
+
+            remove_cube_collisions(scene, robot.get_planning_frame())
+
     except KeyboardInterrupt:
         sys.exit()
