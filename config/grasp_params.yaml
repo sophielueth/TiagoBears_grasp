@@ -1,0 +1,17 @@
+cube_length: 0.045 # in m
+height_over_place: 0.005 # in m
+
+arm_straight_pose: [0, 0, 0, 0, 0, 0, 0] # joint space
+start_pose: [0.50, 0.00, 2.00, 1.35, -1.57, 0.70, 0.70] # joint space
+look_at_pose: [0.50, 0.30, 1.25, 1.35, -1.57, 0.70, 0.70] # joint space
+
+rotate_0: [0, 0, 0, 1] # quat
+approach_ang_hor: [0, 0.382, 0,  0.923] # quat, 45deg around y
+# quat, rotations around z axis in 90 deg steps
+grasps: [[0, 0, 0, 1], # front
+         [0, 0, 0.707002, -0.7072115], # left
+         [0, 0, 1, 0.0002963], # back
+         [0, 0, 0.707002, 0.7072115]]  # right
+
+planning_time: 1.0 # s
+num_planning attempts: 5
