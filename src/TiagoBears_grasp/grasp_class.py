@@ -31,6 +31,8 @@ class Grasp:
 		self._arm_straight_pose = rospy.get_param(self.ns + '/arm_straight_pose') # joint space
 		self._start_pose = rospy.get_param(self.ns + '/start_pose') # joint space
 		self._look_at_pose = rospy.get_param(self.ns + '/look_at_pose') # joint space
+		self._grasp_offset_x = rospy.get_param(self.ns + '/gripper/grasp_offset_x')
+		self._grasp_offset_z = rospy.get_param(self.ns + '/gripper/grasp_offset_z')
 
 		## Instantiate a `MoveGroupCommander`_ object; it's interface to a planning group (group of joints), used to plan and execute motions:
 		group_name = 'arm_left' if is_left else 'arm_right'
@@ -62,22 +64,16 @@ class Grasp:
 		self._rotate_z_90_degs = [np.array(grasp) for grasp in rospy.get_param(self.ns + '/grasps')]
 
 		sqrt_2 = np.sqrt(2)
-		self._optimal_grasp_orient = np.array([[ sqrt_2, sqrt_2, 0, 0],
-											   [-sqrt_2, sqrt_2, 0, 0],
-											   [ 0, 0, 1, 0],
-											   [ 0, 0, 0, 1]]) if is_left else np.array([[sqrt_2, sqrt_2, 0, 0],
-																						 [sqrt_2, -sqrt_2, 0, 0],
-																						 [0, 0, 1, 0],
-																						 [0, 0, 0, 1]])
+		self._optimal_x = np.array([ 1.0/sqrt_2, -1.0/sqrt_2, 0]) if is_left else np.array([1.0/sqrt_2, 1.0/sqrt_2, 0])
 
 	def pick(self, cube):
 		while cube.pose == None: pass
 
 		# create pre-pick (10 cm above approach posistion) & approach position (1 cube horizonatlly relative to pick) & pick position & post-pick positin (10 cm above pick position)
 		pick_poses_list = self._get_pre_pick_poses(cube.pose)
-		self._execute_pick(pick_poses_list)
+		success = self._execute_pick(pick_poses_list)
 
-		return 0 # should correspond to success
+		return success
 
 	def place(self, place_pose):
 		# create pre-place (10 cm above place posistion) & place position
@@ -103,16 +99,22 @@ class Grasp:
 		header.stamp = rospy.Time.now()
 		goal.trajectory = JointTrajectory(header, self._gripper_joint_names, goal_state)
 		
-		goal.goal_time_tolerance = rospy.Duration.from_sec(0.5)
+		goal.goal_time_tolerance = rospy.Duration.from_sec(1.0)
 		
-		self._gripper_client.send_goal_and_wait(goal)
+		res = -1
+		for i in range(3):
+			res = self._gripper_client.send_goal_and_wait(goal, execute_timeout=rospy.Duration.from_sec(4.0), preempt_timeout=rospy.Duration.from_sec(5.0))
+			if res == 3:
+				break
+		
+		return res == 3
 
 	def _execute_pick(self, pick_poses_list):
 		remove_approach_pose = False
 		ik_solved = False
 		
-		# sort pick_poses by order of similarity to optimal pose, coming diagonally from front corners of the table
-		orient_error = np.sqrt([tr.quaternion_matrix(pick_pose[-2].orientation) for pick_pose in pick_poses_list] - self._optimal_grasp_orient)
+		# sort pick_poses by order of similarity to optimal pose direction, coming diagonally from front corners of the table (x axis)
+		orient_error = np.sum(np.square([tr.quaternion_matrix(quat_to_array(pick_pose[-2].orientation))[:3, 0] for pick_pose in pick_poses_list] - self._optimal_x), axis=1)
 		indx = np.argsort(orient_error)
 		pick_poses_list = pick_poses_list[indx]
 
@@ -133,25 +135,41 @@ class Grasp:
 					remove_approach_pose = True
 			else:
 				print 'no path could be found'
-				return 1
+				return False
 	
-		res = self.move_group.execute(plan, wait=True)
-		
-		self.set_gripper(self._gripper_closed)
+		if not self.move_group.execute(plan, wait=True): # success
+			print 'motion execution failed'
+			return False
+
+		if not self.set_gripper(self._gripper_closed):
+			print 'gripper closing failed'
+			return False
 
 		self._retract([pick_poses[-1]])
+
+		return True
 
 	def _execute_place(self, place_poses_list):
 		for place_poses in place_poses_list:
 			plan, fraction = self.move_group.compute_cartesian_path(place_poses, 0.01, 0.0)
 			if fraction == 1: # could compute whole trajectory
 				break
-
-		res = self.move_group.execute(plan, wait=True)
 		
-		self.set_gripper(self._gripper_opened)
+		if not fraction == 1:
+			print 'no path could be found'
+			return False
+
+		if not self.move_group.execute(plan, wait=True):
+			print 'motion execution failed'
+			return False
+		
+		if not self.set_gripper(self._gripper_opened):
+			print 'gripper opening failed'
+			return False
 
 		self._retract([place_poses[0]])
+
+		return True
 
 	def _retract(self, retract_poses):
 		plan, _ = self.move_group.compute_cartesian_path(retract_poses, 0.01, 0.0)  
@@ -173,17 +191,14 @@ class Grasp:
 			# get hom rot matrix from quaternion
 			R = tr.quaternion_matrix(q)
 			# hardcode a grasping frame
-			# TODO: difference pal-gripper to robotiq
-			# (target_pose.position.x, target_pose.position.y, target_pose.position.z) = (target_pose.position.x, target_pose.position.y, target_pose.position.z) - 0.02 * R[:3, 0] # -2 cm in cube's x frame
-			# (target_pose.position.x, target_pose.position.y, target_pose.position.z) = (target_pose.position.x, target_pose.position.y, target_pose.position.z) + 0.02 * R[:3, 2] # +2 cm in cube's z frame
-			(target_pose.position.x, target_pose.position.y, target_pose.position.z) = (target_pose.position.x, target_pose.position.y, target_pose.position.z) - 0.06 * R[:3, 0] # -2 cm in cube's x frame
-			(target_pose.position.x, target_pose.position.y, target_pose.position.z) = (target_pose.position.x, target_pose.position.y, target_pose.position.z) + 0.06 * R[:3, 2] # +2 cm in cube's z frame
+			(target_pose.position.x, target_pose.position.y, target_pose.position.z) = (target_pose.position.x, target_pose.position.y, target_pose.position.z) - self._grasp_offset_x * R[:3, 0] # in cube's x frame
+			(target_pose.position.x, target_pose.position.y, target_pose.position.z) = (target_pose.position.x, target_pose.position.y, target_pose.position.z) + self._grasp_offset_z * R[:3, 2] # in cube's z frame
 
 			#  move target pose to -5cm in x direction in its own frame
 			approach_pose = copy.deepcopy(target_pose)
 			(approach_pose.position.x, approach_pose.position.y, approach_pose.position.z) = (approach_pose.position.x, approach_pose.position.y, approach_pose.position.z) - 0.05 * R[:3, 0]
 
-			q = tr.quaternion_multiply(q, self._rotate_y_45_deg) # approach angle to horizontal
+			q = tr.quaternion_multiply(q, self._approach_ang_hor) # approach angle to horizontal
 
 			# have the end-effector approach from 10 cm above the cube
 			target_pose.orientation = approach_pose.orientation = array_to_quat(q)
@@ -208,10 +223,10 @@ class Grasp:
 
 			R = tr.quaternion_matrix(q)
 			# hardcode a grasping frame
-			(target_pose.position.x, target_pose.position.y, target_pose.position.z) = (target_pose.position.x, target_pose.position.y, target_pose.position.z) - 0.02 * R[:3, 0] # -2 cm in cube's x frame
-			(target_pose.position.x, target_pose.position.y, target_pose.position.z) = (target_pose.position.x, target_pose.position.y, target_pose.position.z) + 0.02 * R[:3, 2] # +2 cm in cube's z frame
+			(target_pose.position.x, target_pose.position.y, target_pose.position.z) = (target_pose.position.x, target_pose.position.y, target_pose.position.z) - self._grasp_offset_x * R[:3, 0] # -2 cm in cube's x frame
+			(target_pose.position.x, target_pose.position.y, target_pose.position.z) = (target_pose.position.x, target_pose.position.y, target_pose.position.z) + self._grasp_offset_z * R[:3, 2] # +2 cm in cube's z frame
 
-			q = tr.quaternion_multiply(q, self._rotate_y_45_deg) # approach angle to horizontal
+			q = tr.quaternion_multiply(q, self._approach_ang_hor) # approach angle to horizontal
 
 			target_pose.orientation = array_to_quat(q)
 			pre_pose = copy.deepcopy(target_pose)
