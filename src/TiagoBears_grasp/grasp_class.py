@@ -17,36 +17,27 @@ from actionlib import SimpleActionClient
 
 from cube_class import Cube
 
-# MAIN/Basis FRAME is base_footprint
-# later TODO s: 
-# - both arms to move and "work" simulaneously
-# - add some params in the init function to a param .yaml and read out from the parameter server
-# - add a smart wait pose
 
 # list of (current) TODO s:
 # - add error handling: check whether cube has been picked up
 
 
 class Grasp:
-	def __init__(self, is_left, traj_pub):
-		self._cube_length = 0.045 # in m
-		self._height_over_place = 0.005 # in m 
+	def __init__(self, is_left, ns='/TiagoBears'):
+		self.ns = ns
+		self._cube_length = rospy.get_param(self.ns + '/cube_length')
+		self._height_over_place = rospy.get_param(self.ns + '/height_over_place')
 
-		# self._look_at_pose_left = Pose(Point(0.626, 0.107, 0.882), Quaternion(0.774, -0.497, 0.356, -0.165)) # supposed to be sent to gripper_left_grasping_frame
-		# self._look_at_pose_right = Pose(Point(0.608, -0.130, 0.882), Quaternion(0.773, 0.494, 0.364, 0.162)) # supposed to be sent to gripper_right_grasping_frame
-
-		self._arm_straight_pose = [0, 0, 0, 0, 0, 0, 0] # in joint space
-		self._start_pose = [0.50, 0.00, 2.00, 1.35, -1.57, 0.70, 0.70] # in joint space
-		self._look_at_pose = [0.50, 0.30, 1.25, 1.35, -1.57, 0.70, 0.70]# in joint space
+		self._arm_straight_pose = rospy.get_param(self.ns + '/arm_straight_pose') # joint space
+		self._start_pose = rospy.get_param(self.ns + '/start_pose') # joint space
+		self._look_at_pose = rospy.get_param(self.ns + '/look_at_pose') # joint space
 
 		## Instantiate a `MoveGroupCommander`_ object; it's interface to a planning group (group of joints), used to plan and execute motions:
 		group_name = 'arm_left' if is_left else 'arm_right'
 
 		self.move_group = moveit_commander.MoveGroupCommander(group_name)
-		self.move_group.set_planning_time(1.0)
-		self.move_group.set_num_planning_attempts(5)
-
-		self.display_trajectory_publisher = traj_pub
+		self.move_group.set_planning_time(rospy.get_param(self.ns + '/planning_time'))
+		self.move_group.set_num_planning_attempts(rospy.get_param(self.ns + '/num_planning_attempts'))
 
 		# Set end_effector_link frame to gripper_xx_grasping_frame
 		ee_link = 'gripper_left_grasping_frame' if is_left else 'gripper_right_grasping_frame'
@@ -60,30 +51,29 @@ class Grasp:
 		self._gripper_client = SimpleActionClient(ns=ns, ActionSpec=FollowJointTrajectoryAction)
 		self._gripper_client.wait_for_server()
 
-		# self._gripper_closed = [JointTrajectoryPoint(positions=[0.5], time_from_start=rospy.Duration.from_sec(2))]
-		# self._gripper_opened = [JointTrajectoryPoint(positions=[0.0], time_from_start=rospy.Duration.from_sec(2))]
-		self._gripper_closed = [JointTrajectoryPoint(positions=[0.02, 0.02], time_from_start=rospy.Duration.from_sec(2))]
-		self._gripper_opened = [JointTrajectoryPoint(positions=[0.04, 0.04], time_from_start=rospy.Duration.from_sec(2))]
-		# # self._gripper_joint_names = ['gripper_left_finger_joint'] if is_left else ['gripper_right_finger_joint']
-		self._gripper_joint_names = ['gripper_left_left_finger_joint', 'gripper_left_right_finger_joint'] if is_left else ['gripper_right_left_finger_joint', 'gripper_right_right_finger_joint']
+		self._gripper_closed = [JointTrajectoryPoint(positions=rospy.get_param(self.ns + '/gripper/gripper_closed'), time_from_start=rospy.Duration.from_sec(2))]
+		self._gripper_opened = [JointTrajectoryPoint(positions=rospy.get_param(self.ns + '/gripper/gripper_opened'), time_from_start=rospy.Duration.from_sec(2))]
+		self._gripper_joint_names = rospy.get_param(self.ns + '/gripper/joint_names_left') if is_left else rospy.get_param(self.ns + '/gripper/joint_names_right')
 
 		self.set_gripper(self._gripper_opened)
 
-		self._rotate_0 = np.array([0, 0, 0, 1])
-		self._rotate_y_45_deg = np.array([0, 0.382, 0,  0.923])
-		self._rotate_z_90_degs = [self._rotate_0, # for the gripper frame to approach from the front
-								 np.array([0, 0, 0.707002, -0.7072115]), # left					
-								 np.array([0, 0, 1, 0.0002963]), # back
-								 np.array([0, 0, 0.707002, 0.7072115])] if is_left else [self._rotate_0, # right for left and front for right 
-																						 np.array([0, 0, 0.707002, 0.7072115]), # right
-												                                         np.array([0, 0, 1, 0.0002963]), # back
-																						 np.array([0, 0, 0.707002, -0.7072115])] # left
+		self._rotate_0 = np.array(rospy.get_param(self.ns + '/rotate_0'))
+		self._approach_ang_hor = np.array(rospy.get_param(self.ns + '/approach_ang_hor'))
+		self._rotate_z_90_degs = [np.array(grasp) for grasp in rospy.get_param(self.ns + '/grasps')]
+
+		sqrt_2 = np.sqrt(2)
+		self._optimal_grasp_orient = np.array([[ sqrt_2, sqrt_2, 0, 0],
+											   [-sqrt_2, sqrt_2, 0, 0],
+											   [ 0, 0, 1, 0],
+											   [ 0, 0, 0, 1]]) if is_left else np.array([[sqrt_2, sqrt_2, 0, 0],
+																						 [sqrt_2, -sqrt_2, 0, 0],
+																						 [0, 0, 1, 0],
+																						 [0, 0, 0, 1]])
 
 	def pick(self, cube):
 		while cube.pose == None: pass
-		# use_left = True if cube.pose.position.y > 0 else False # should be done somewhere else
 
-		# create pre-pick (10 cm above pick posistion) & pick position
+		# create pre-pick (10 cm above approach posistion) & approach position (1 cube horizonatlly relative to pick) & pick position & post-pick positin (10 cm above pick position)
 		pick_poses_list = self._get_pre_pick_poses(cube.pose)
 		self._execute_pick(pick_poses_list)
 
@@ -120,12 +110,18 @@ class Grasp:
 	def _execute_pick(self, pick_poses_list):
 		remove_approach_pose = False
 		ik_solved = False
+		
+		# sort pick_poses by order of similarity to optimal pose, coming diagonally from front corners of the table
+		orient_error = np.sqrt([tr.quaternion_matrix(pick_pose[-2].orientation) for pick_pose in pick_poses_list] - self._optimal_grasp_orient)
+		indx = np.argsort(orient_error)
+		pick_poses_list = pick_poses_list[indx]
+
 		for i in range(2):
 			for pick_poses in pick_poses_list: # if no good path found, remove the -0.05 cm x point from the planning (maybe at another one at -0.02, that can then be chosen) 
 				if remove_approach_pose:
-					pick_poses = [pick_poses[0], pick_poses[-1]]
+					pick_poses = [pick_poses[0], pick_poses[-2]]
 				plan, fraction = self.move_group.compute_cartesian_path(
-					pick_poses,  # waypoints to follow
+					pick_poses[:-1],  # waypoints to follow, disregard post pick pose
 					0.01,  # eef_step
 					0.0)  # jump_threshold
 				if fraction == 1: # could compute whole trajectory
@@ -133,14 +129,17 @@ class Grasp:
 					break
 			if ik_solved:
 				break
+			elif not remove_approach_pose:
+					remove_approach_pose = True
 			else:
-				remove_approach_pose = True
+				print 'no path could be found'
+				return 1
 	
 		res = self.move_group.execute(plan, wait=True)
 		
 		self.set_gripper(self._gripper_closed)
 
-		self._retract([pick_poses[0]])
+		self._retract([pick_poses[-1]])
 
 	def _execute_place(self, place_poses_list):
 		for place_poses in place_poses_list:
@@ -174,6 +173,7 @@ class Grasp:
 			# get hom rot matrix from quaternion
 			R = tr.quaternion_matrix(q)
 			# hardcode a grasping frame
+			# TODO: difference pal-gripper to robotiq
 			# (target_pose.position.x, target_pose.position.y, target_pose.position.z) = (target_pose.position.x, target_pose.position.y, target_pose.position.z) - 0.02 * R[:3, 0] # -2 cm in cube's x frame
 			# (target_pose.position.x, target_pose.position.y, target_pose.position.z) = (target_pose.position.x, target_pose.position.y, target_pose.position.z) + 0.02 * R[:3, 2] # +2 cm in cube's z frame
 			(target_pose.position.x, target_pose.position.y, target_pose.position.z) = (target_pose.position.x, target_pose.position.y, target_pose.position.z) - 0.06 * R[:3, 0] # -2 cm in cube's x frame
@@ -190,9 +190,13 @@ class Grasp:
 			pre_pose = copy.deepcopy(approach_pose)
 			pre_pose.position.z += 0.1
 
-			poses.append([pre_pose, approach_pose, target_pose])
+			# post grasp pose for retracting, is 10 cm above target pose
+			post_pose = copy.deepcopy(target_pose)
+			post_pose.position.z += 0.1
 
-		return poses
+			poses.append([pre_pose, approach_pose, target_pose, post_pose])
+
+		return np.array(poses)
 
 	def _get_pre_place_poses(self, cube_pose):
 		poses = []
