@@ -18,10 +18,6 @@ from actionlib import SimpleActionClient
 from cube_class import Cube
 
 
-# list of (current) TODO s:
-# - add error handling: check whether cube has been picked up
-
-
 class Grasp:
 	def __init__(self, is_left, ns='/TiagoBears'):
 		self.ns = ns
