@@ -57,8 +57,13 @@ class Grasp:
 
 		self._rotate_0 = np.array(rospy.get_param(self.ns + '/rotate_0'))
 		self._approach_ang_hor = np.array(rospy.get_param(self.ns + '/approach_ang_hor'))
-		self._rotate_z_90_degs = [np.array(grasp) for grasp in rospy.get_param(self.ns + '/grasps')]
+		self._grasps = [np.array(grasp) for grasp in rospy.get_param(self.ns + '/grasps')]
 
+		# first pose to move end-effector to in any grasp scenario
+		start_x, start_y, start_z = rospy.get_param(self.ns + '/start_grasp_pose_left_pos') if is_left else rospy.get_param(self.ns + '/start_grasp_pose_right_pos')
+		start_grasp_pose_quat = rospy.get_param(self.ns + '/start_grasp_pose_left_quat') if is_left else rospy.get_param(self.ns + '/start_grasp_pose_right_quat')
+		self._start_grasp_pose = Pose(position=Point(x=start_x, y=start_y, z=start_z), orientation=array_to_quat(start_grasp_pose_quat))
+		
 		sqrt_2 = np.sqrt(2)
 		self._optimal_x = np.array([ 1.0/sqrt_2, -1.0/sqrt_2, 0]) if is_left else np.array([1.0/sqrt_2, 1.0/sqrt_2, 0])
 
@@ -129,6 +134,7 @@ class Grasp:
 				break
 			elif not remove_approach_pose:
 					remove_approach_pose = True
+					print 'will remove the approach pose for path planning'
 			else:
 				print 'no path could be found'
 				return False
@@ -177,13 +183,13 @@ class Grasp:
 	def _get_pre_pick_poses(self, cube_pose):
 		poses = []
 
-		for rotate_z in self._rotate_z_90_degs:
+		for grasp in self._grasps:
 			target_pose = copy.deepcopy(cube_pose)
 			approach_pose = copy.deepcopy(target_pose)
 
 			q = quat_to_array(target_pose.orientation)
 			# approach from left, right, front or back
-			q = tr.quaternion_multiply(q, rotate_z)
+			q = tr.quaternion_multiply(q, grasp)
 			# get hom rot matrix from quaternion
 			R = tr.quaternion_matrix(q)
 			# hardcode a grasping frame
@@ -198,24 +204,26 @@ class Grasp:
 
 			# have the end-effector approach from 10 cm above the cube
 			target_pose.orientation = approach_pose.orientation = array_to_quat(q)
-			pre_pose = copy.deepcopy(approach_pose)
-			pre_pose.position.z += 0.1
+			# pre_pose = copy.deepcopy(approach_pose)
+			# pre_pose.position.z += 0.1
 
 			# post grasp pose for retracting, is 10 cm above target pose
 			post_pose = copy.deepcopy(target_pose)
 			post_pose.position.z += 0.1
 
-			poses.append([pre_pose, approach_pose, target_pose, post_pose])
+			# poses.append([pre_pose, approach_pose, target_pose, post_pose])
+			poses.append([self._start_grasp_pose, approach_pose, target_pose, post_pose])
+
 
 		return np.array(poses)
 
 	def _get_pre_place_poses(self, cube_pose):
 		poses = []
 
-		for rotate_z in self._rotate_z_90_degs:	
+		for grasp in self._grasps:	
 			target_pose = copy.deepcopy(cube_pose)
 			q = quat_to_array(target_pose.orientation)
-			q = tr.quaternion_multiply(q, rotate_z) # approach from left, right, front or back
+			q = tr.quaternion_multiply(q, grasp) # approach from left, right, front or back
 
 			R = tr.quaternion_matrix(q)
 			# hardcode a grasping frame
