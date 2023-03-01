@@ -143,9 +143,11 @@ class Grasp:
 			print 'motion execution failed'
 			return False
 
-		if not self.set_gripper(self._gripper_closed):
-			print 'gripper closing failed'
-			return False
+		self.set_gripper(self._gripper_closed)
+		# was not really a good error indicator
+		# if not self.set_gripper(self._gripper_closed):
+			# print 'gripper closing failed'
+			# return False
 
 		self._retract([pick_poses[-1]])
 
