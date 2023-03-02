@@ -3,5 +3,5 @@ gripper:
   joint_names_right: ['gripper_right_left_finger_joint', 'gripper_right_right_finger_joint']
   gripper_closed: [0.015, 0.015] # m
   gripper_opened: [0.045, 0.045] # m
-  grasp_offset_x: 0.048 # m
-  grasp_offset_z: 0.048 # m
+  grasp_offset_x: 0.04 # m
+  grasp_offset_z: 0.04 # m

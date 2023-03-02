@@ -6,6 +6,8 @@ import numpy as np
 
 import rospy
 import moveit_commander
+# path_constraints = moveit_msgs.msg.Constraints()
+# moveit_commander.move_group.MoveGroupCommander.set_path_constraints(path_constraints)
 import moveit_msgs.msg
 from geometry_msgs.msg import Pose, Point, Quaternion, PoseStamped
 from tf import transformations as tr
@@ -71,7 +73,7 @@ class Grasp:
 		while cube.pose == None: pass
 
 		cube_pose = cube.pose
-		if cube_pose.position.z < 0.5: cube_pose.position.z = 0.5 # to avoid scrapping gripper on the table
+		if cube_pose.position.z < 0.52: cube_pose.position.z = 0.52 # to avoid scrapping gripper on the table
 
 		# create pre-pick (10 cm above approach posistion) & approach position (1 cube horizonatlly relative to pick) & pick position & post-pick positin (10 cm above pick position)
 		pick_poses_list = self._get_pre_pick_poses(cube_pose)
