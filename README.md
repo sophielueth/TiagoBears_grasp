@@ -19,9 +19,7 @@ A `Grasp` object, rather a grasping handler, can simply be created via
 grasp_left=Grasp(is_left=True) # left arm
 grasp_right=Grasp(is_left=False) # right arm
 
-grasp_left.pick(cube5) # cube from the TiagoBears_grasp cube class
-# might additionally in the future allow for collision checking after gripper closing
-grasp_left.pick(cube5, activate_collision_left) # activate_collision_left would be a function
+grasp_left.pick(pose) # Pose from geometry_msgs.msg.Pose
 ```
 
 For an example implementation see `TiagoBears_plan/scripts/test_node.py`.
