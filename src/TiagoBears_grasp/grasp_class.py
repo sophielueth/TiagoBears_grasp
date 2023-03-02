@@ -72,7 +72,9 @@ class Grasp:
 	def pick(self, cube):
 		while cube.pose == None: pass
 
-		cube_pose = cube.pose
+		return self.pick(cube.pose)
+	
+	def pick(self, cube_pose):
 		if cube_pose.position.z < 0.52: cube_pose.position.z = 0.52 # to avoid scrapping gripper on the table
 
 		# create pre-pick (10 cm above approach posistion) & approach position (1 cube horizonatlly relative to pick) & pick position & post-pick positin (10 cm above pick position)
