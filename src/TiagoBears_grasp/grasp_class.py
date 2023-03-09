@@ -69,10 +69,10 @@ class Grasp:
 		sqrt_2 = np.sqrt(2)
 		self._optimal_x = np.array([ 1.0/sqrt_2, -1.0/sqrt_2, 0]) if is_left else np.array([1.0/sqrt_2, 1.0/sqrt_2, 0])
 
-	def pick(self, cube):
-		while cube.pose == None: pass
+	# def pick(self, cube):
+	# 	while cube.pose == None: pass
 
-		return self.pick(cube.pose)
+	# 	return self.pick(cube.pose)
 	
 	def pick(self, cube_pose):
 		if cube_pose.position.z < 0.52: cube_pose.position.z = 0.52 # to avoid scrapping gripper on the table
@@ -146,8 +146,10 @@ class Grasp:
 				print 'no path could be found'
 				return False
 	
+		self.set_gripper(self._gripper_opened)
 		if not self.move_group.execute(plan, wait=True): # success
 			print 'motion execution failed'
+			self.move_to_watch_position()
 			return False
 
 		self.set_gripper(self._gripper_closed)
