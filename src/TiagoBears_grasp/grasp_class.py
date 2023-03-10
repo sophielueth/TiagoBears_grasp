@@ -68,11 +68,6 @@ class Grasp:
 		
 		sqrt_2 = np.sqrt(2)
 		self._optimal_x = np.array([ 1.0/sqrt_2, -1.0/sqrt_2, 0]) if is_left else np.array([1.0/sqrt_2, 1.0/sqrt_2, 0])
-
-	# def pick(self, cube):
-	# 	while cube.pose == None: pass
-
-	# 	return self.pick(cube.pose)
 	
 	def pick(self, cube_pose):
 		if cube_pose.position.z < 0.52: cube_pose.position.z = 0.52 # to avoid scrapping gripper on the table
@@ -88,7 +83,7 @@ class Grasp:
 		place_poses_list = self._get_pre_place_poses(place_pose)
 		self._execute_place(place_poses_list)
 
-		return 0 # should be success
+		return 0 # represents success
 
 	def move_to_start_position(self):
 		self.move_group.go(self._arm_straight_pose, wait=True)
@@ -152,11 +147,8 @@ class Grasp:
 			self.move_to_watch_position()
 			return False
 
+		# we don't use this return value, as it is not a good indicator of success/failure
 		self.set_gripper(self._gripper_closed)
-		# was not really a good error indicator
-		# if not self.set_gripper(self._gripper_closed):
-			# print 'gripper closing failed'
-			# return False
 
 		self._retract([pick_poses[-1]])
 
@@ -176,10 +168,9 @@ class Grasp:
 			print 'motion execution failed'
 			return False
 		
-		if not self.set_gripper(self._gripper_opened):
-			print 'gripper opening failed'
-			return False
-
+		# we don't use this return value, as it is not a good indicator of success/failure
+		self.set_gripper(self._gripper_opened):
+		
 		self._retract([place_poses[0]])
 
 		return True

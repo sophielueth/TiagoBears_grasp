@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+
+    <!-- <include file="$(find ProRobMan)/launch/gazebo_world.launch"/> -->
+
+    <!-- end-effector type, also robotiq-2f-85 possible -->
+    <arg name="ee" default="pal-gripper"/>
+    <arg name="ns" default="TiagoBears"/>
+    <!-- <arg name="sim" default="True"/> -->
+
+    <rosparam command="load" file="$(find TiagoBears_grasp)/config/grasp_params.yaml" ns="$(arg ns)"/>
+    <rosparam command="load" file="$(find TiagoBears_grasp)/config/gripper_params_$(arg ee).yaml" ns="$(arg ns)"/>
+
+    <node name="TiagoBears_grasp" pkg="TiagoBears_grasp" type="grasp_node"/>
+
+</launch>
