@@ -35,7 +35,7 @@ class Grasp:
 		## Instantiate a `MoveGroupCommander`_ object; it's interface to a planning group (group of joints), used to plan and execute motions:
 		group_name = 'arm_left' if is_left else 'arm_right'
 
-		self.move_group = moveit_commander.MoveGroupCommander(group_name)
+		self.move_group = moveit_commander.MoveGroupCommander(name=group_name, wait_for_servers=30.0)
 		self.move_group.set_planning_time(rospy.get_param(self.ns + '/planning_time'))
 		self.move_group.set_num_planning_attempts(rospy.get_param(self.ns + '/num_planning_attempts'))
 
@@ -169,7 +169,7 @@ class Grasp:
 			return False
 		
 		# we don't use this return value, as it is not a good indicator of success/failure
-		self.set_gripper(self._gripper_opened):
+		self.set_gripper(self._gripper_opened)
 		
 		self._retract([place_poses[0]])
 
