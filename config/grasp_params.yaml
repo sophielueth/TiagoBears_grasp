@@ -14,29 +14,29 @@ rotate_0: [0, 0, 0, 1] # quat
 approach_ang_hor: [0, 0.382, 0,  0.923] # quat, 45deg around y
 # quat, rotations around z axis in 30 deg steps
 grasps: [[0, 0, 0, 1],                            # front, 0 deg z
-         [1, 0, 0, 0],                            # front with gripper rotated by 180 (symmetry)
+        #  [1, 0, 0, 0],                            # front with gripper rotated by 180 (symmetry)
          [0, 0, 0.258819, 0.9659258],             # 30 deg z
-         [0.9659258, 0.258819, 0, 0],             # 30 deg z, then 180 deg x (locally)
+        #  [0.9659258, 0.258819, 0, 0],             # 30 deg z, then 180 deg x (locally)
          [0, 0, 0.5, 0.8660254],                  # 60 deg z
-         [0.8660254, 0.5, 0, 0],                  # 60 deg z, then 180 deg x (locally)
+        #  [0.8660254, 0.5, 0, 0],                  # 60 deg z, then 180 deg x (locally)
          [0, 0, 0.7071068, 0.7071068],            # left, 90 deg z
-         [0.7071068, 0.7071068, 0, 0],            # left, 90 deg z, then 180 deg x (locally)
+        #  [0.7071068, 0.7071068, 0, 0],            # left, 90 deg z, then 180 deg x (locally)
          [0, 0, 0.8660254, 0.5],                  # 120 deg z
-         [0.5, 0.8660254, 0, 0],                  # 120 deg z, then 180 deg x (locally)
+        #  [0.5, 0.8660254, 0, 0],                  # 120 deg z, then 180 deg x (locally)
          [0, 0, 0.9659258, 0.258819],             # 150 deg z 
-         [0.258819, 0.9659258, 0, 0],             # 150 deg z, then 180 deg x (locally)
+        #  [0.258819, 0.9659258, 0, 0],             # 150 deg z, then 180 deg x (locally)
          [0, 0, 1, 0],                            # back, 180 deg z
-         [0, 1, 0, 0],                            # back, 180 deg z, then 180 deg x (locally)
+        #  [0, 1, 0, 0],                            # back, 180 deg z, then 180 deg x (locally)
          [0, 0, 0.9659258,-0.258819],             # 210 deg z
-         [-0.258819, 0.9659258, 0, 0],            # 210 deg z, then 180 deg x (locally)
+        #  [-0.258819, 0.9659258, 0, 0],            # 210 deg z, then 180 deg x (locally)
          [0, 0, 0.8660254, -0.5],                 # 240 deg z
-         [-0.5, 0.8660254, 0, 0],                 # 240 deg z, then 180 deg x (locally)
+        #  [-0.5, 0.8660254, 0, 0],                 # 240 deg z, then 180 deg x (locally)
          [0, 0, 0.7071068, 0.7071068],            # right, 270 deg z
-         [0.7071068, 0.7071068, 0, 0],            # right, 270 deg z, then 180 deg x (locally)
+        #  [0.7071068, 0.7071068, 0, 0],            # right, 270 deg z, then 180 deg x (locally)
          [0, 0, 0.5, -0.8660254],                 # 300 deg z
-         [-0.8660254, 0.5, 0, 0],                 # 300 deg z, then 180 deg x (locally)
-         [0, 0, 0.258819, -0.9659258],            # 330 deg z
-         [-0.9659258, 0.258819, 0, 0]]            # 330 deg z, then 180 deg x (locally)           
+        #  [-0.8660254, 0.5, 0, 0],                 # 300 deg z, then 180 deg x (locally)
+         [0, 0, 0.258819, -0.9659258]]            # 330 deg z
+        #  [-0.9659258, 0.258819, 0, 0]]            # 330 deg z, then 180 deg x (locally)           
 
 planning_time: 5.0 # s
 num_planning_attempts: 10

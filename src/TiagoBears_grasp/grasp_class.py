@@ -35,7 +35,7 @@ class Grasp:
 		## Instantiate a `MoveGroupCommander`_ object; it's interface to a planning group (group of joints), used to plan and execute motions:
 		group_name = 'arm_left' if is_left else 'arm_right'
 
-		self.move_group = moveit_commander.MoveGroupCommander(name=group_name, wait_for_servers=30.0)
+		self.move_group = moveit_commander.MoveGroupCommander(name=group_name, wait_for_servers=60.0)
 		self.move_group.set_planning_time(rospy.get_param(self.ns + '/planning_time'))
 		self.move_group.set_num_planning_attempts(rospy.get_param(self.ns + '/num_planning_attempts'))
 
@@ -51,11 +51,11 @@ class Grasp:
 		self._gripper_client = SimpleActionClient(ns=ns, ActionSpec=FollowJointTrajectoryAction)
 		self._gripper_client.wait_for_server()
 
-		self._gripper_closed = [JointTrajectoryPoint(positions=rospy.get_param(self.ns + '/gripper/gripper_closed'), time_from_start=rospy.Duration.from_sec(2))]
-		self._gripper_opened = [JointTrajectoryPoint(positions=rospy.get_param(self.ns + '/gripper/gripper_opened'), time_from_start=rospy.Duration.from_sec(2))]
+		self._gripper_closed = [JointTrajectoryPoint(positions=rospy.get_param(self.ns + '/gripper/gripper_closed'), time_from_start=rospy.Duration.from_sec(6))]
+		self._gripper_opened = [JointTrajectoryPoint(positions=rospy.get_param(self.ns + '/gripper/gripper_opened'), time_from_start=rospy.Duration.from_sec(6))]
 		self._gripper_joint_names = rospy.get_param(self.ns + '/gripper/joint_names_left') if is_left else rospy.get_param(self.ns + '/gripper/joint_names_right')
 
-		self.set_gripper(self._gripper_opened)
+		while not self.set_gripper(self._gripper_opened): pass
 
 		self._rotate_0 = np.array(rospy.get_param(self.ns + '/rotate_0'))
 		self._approach_ang_hor = np.array(rospy.get_param(self.ns + '/approach_ang_hor'))
@@ -70,7 +70,8 @@ class Grasp:
 		self._optimal_x = np.array([ 1.0/sqrt_2, -1.0/sqrt_2, 0]) if is_left else np.array([1.0/sqrt_2, 1.0/sqrt_2, 0])
 	
 	def pick(self, cube_pose):
-		if cube_pose.position.z < 0.52: cube_pose.position.z = 0.52 # to avoid scrapping gripper on the table
+		# if cube_pose.position.z < 0.51: 
+		cube_pose.position.z = 0.51 # to avoid scrapping gripper on the table
 
 		# create pre-pick (10 cm above approach posistion) & approach position (1 cube horizonatlly relative to pick) & pick position & post-pick positin (10 cm above pick position)
 		pick_poses_list = self._get_pre_pick_poses(cube_pose)
@@ -99,18 +100,15 @@ class Grasp:
 		goal = FollowJointTrajectoryGoal()
 
 		header = Header()
-		header.stamp = rospy.Time.now()
-		goal.trajectory = JointTrajectory(header, self._gripper_joint_names, goal_state)
+		# header.stamp = rospy.Time.now() + rospy.Duration.from_sec(1.0)
+		goal.trajectory = JointTrajectory(header=header, joint_names=self._gripper_joint_names, points=goal_state)
 		
-		goal.goal_time_tolerance = rospy.Duration.from_sec(1.0)
+		goal.goal_time_tolerance = rospy.Duration.from_sec(0.5)
 		
-		res = -1
-		for i in range(3):
-			res = self._gripper_client.send_goal_and_wait(goal, execute_timeout=rospy.Duration.from_sec(4.0), preempt_timeout=rospy.Duration.from_sec(5.0))
-			if res == 3:
-				break
-		
-		return res == 3
+		self._gripper_client.wait_for_server()
+		res = self._gripper_client.send_goal_and_wait(goal, execute_timeout=rospy.Duration.from_sec(30.0), preempt_timeout=rospy.Duration.from_sec(10.0))
+
+		return res == 3 or res == 4
 
 	def _execute_pick(self, pick_poses_list):
 		remove_approach_pose = False
@@ -125,8 +123,10 @@ class Grasp:
 			for pick_poses in pick_poses_list: # if no good path found, remove the -0.05 cm x point from the planning (maybe at another one at -0.02, that can then be chosen) 
 				if remove_approach_pose:
 					pick_poses = [pick_poses[0], pick_poses[-2]]
+				else:
+					pick_poses = pick_poses[:-1] 
 				plan, fraction = self.move_group.compute_cartesian_path(
-					pick_poses[:-1],  # waypoints to follow, disregard post pick pose
+					pick_poses,  # waypoints to follow, disregard post pick pose
 					0.01,  # eef_step
 					0.0)  # jump_threshold
 				if fraction == 1: # could compute whole trajectory
@@ -141,14 +141,14 @@ class Grasp:
 				print 'no path could be found'
 				return False
 	
-		self.set_gripper(self._gripper_opened)
+		while not self.set_gripper(self._gripper_opened): pass
 		if not self.move_group.execute(plan, wait=True): # success
 			print 'motion execution failed'
 			self.move_to_watch_position()
 			return False
 
 		# we don't use this return value, as it is not a good indicator of success/failure
-		self.set_gripper(self._gripper_closed)
+		while not self.set_gripper(self._gripper_closed): pass
 
 		self._retract([pick_poses[-1]])
 
@@ -169,7 +169,7 @@ class Grasp:
 			return False
 		
 		# we don't use this return value, as it is not a good indicator of success/failure
-		self.set_gripper(self._gripper_opened)
+		while not self.set_gripper(self._gripper_opened): pass
 		
 		self._retract([place_poses[0]])
 
