@@ -63,9 +63,10 @@ class Grasp:
 
 		# first pose to move end-effector to in any grasp scenario
 		start_x, start_y, start_z = rospy.get_param(self.ns + '/start_grasp_pose_left_pos') if is_left else rospy.get_param(self.ns + '/start_grasp_pose_right_pos')
-		start_grasp_pose_quat = rospy.get_param(self.ns + '/start_grasp_pose_left_quat') if is_left else rospy.get_param(self.ns + '/start_grasp_pose_right_quat')
-		self._start_grasp_pose = Pose(position=Point(x=start_x, y=start_y, z=start_z), orientation=array_to_quat(start_grasp_pose_quat))
-		
+		start_grasp_pose_quats = rospy.get_param(self.ns + '/start_grasp_pose_left_quat') if is_left else rospy.get_param(self.ns + '/start_grasp_pose_right_quat')
+		self._start_grasp_pose = Pose(position=Point(x=start_x, y=start_y, z=start_z), orientation=array_to_quat(start_grasp_pose_quats[0]))
+		self._start_grasp_pose_180 = Pose(position=Point(x=start_x, y=start_y, z=start_z), orientation=array_to_quat(start_grasp_pose_quats[1]))
+
 		sqrt_2 = np.sqrt(2)
 		self._optimal_x = np.array([ 1.0/sqrt_2, -1.0/sqrt_2, 0]) if is_left else np.array([1.0/sqrt_2, 1.0/sqrt_2, 0])
 	
@@ -185,7 +186,7 @@ class Grasp:
 	def _get_pre_pick_poses(self, cube_pose):
 		poses = []
 
-		for grasp in self._grasps:
+		for index, grasp in enumerate(self._grasps):
 			target_pose = copy.deepcopy(cube_pose)
 			approach_pose = copy.deepcopy(target_pose)
 
@@ -206,15 +207,16 @@ class Grasp:
 
 			# have the end-effector approach from 10 cm above the cube
 			target_pose.orientation = approach_pose.orientation = array_to_quat(q)
-			# pre_pose = copy.deepcopy(approach_pose)
-			# pre_pose.position.z += 0.1
 
 			# post grasp pose for retracting, is 10 cm above target pose
 			post_pose = copy.deepcopy(target_pose)
 			post_pose.position.z += 0.1
 
-			# poses.append([pre_pose, approach_pose, target_pose, post_pose])
-			poses.append([self._start_grasp_pose, approach_pose, target_pose, post_pose])
+			# respect orientation of grasp:
+			if index % 2:
+				poses.append([self._start_grasp_pose_180, approach_pose, target_pose, post_pose])
+			else:
+				poses.append([self._start_grasp_pose, target_pose, approach_pose, post_pose])
 
 
 		return np.array(poses)
