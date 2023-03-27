@@ -9,7 +9,7 @@ import moveit_commander
 # path_constraints = moveit_msgs.msg.Constraints()
 # moveit_commander.move_group.MoveGroupCommander.set_path_constraints(path_constraints)
 import moveit_msgs.msg
-from geometry_msgs.msg import Pose, Point, Quaternion, PoseStamped
+from geometry_msgs.msg import PoseArray, Pose, Point, Quaternion
 from tf import transformations as tr
 
 from std_msgs.msg import Header
@@ -70,6 +70,9 @@ class Grasp:
 		sqrt_2 = np.sqrt(2)
 		self._optimal_x = np.array([ 1.0/sqrt_2, -1.0/sqrt_2, 0]) if is_left else np.array([1.0/sqrt_2, 1.0/sqrt_2, 0])
 	
+		# debug:pick pose publisher
+		self._approach_pick_poses_publisher = rospy.Publisher(self.ns + '/approach_pick_poses', PoseArray, queue_size=1)
+
 	def pick(self, cube_pose):
 		# if cube_pose.position.z < 0.51: 
 		cube_pose.position.z = 0.51 # to avoid scrapping gripper on the table
@@ -123,13 +126,20 @@ class Grasp:
 		for i in range(2):
 			for pick_poses in pick_poses_list: # if no good path found, remove the -0.05 cm x point from the planning (maybe at another one at -0.02, that can then be chosen) 
 				if remove_approach_pose:
-					pick_poses = [pick_poses[0], pick_poses[-2]]
+					pick_poses_approach = [pick_poses[0], pick_poses[-2]]
 				else:
-					pick_poses = pick_poses[:-1] 
+					pick_poses_approach = pick_poses[:-1] 
 				plan, fraction = self.move_group.compute_cartesian_path(
-					pick_poses,  # waypoints to follow, disregard post pick pose
+					pick_poses_approach,  # waypoints to follow, disregard post pick pose
 					0.01,  # eef_step
 					0.0)  # jump_threshold
+
+				# debug publish pick poses
+				pa = PoseArray()
+				pa.header.frame_id = 'base_footprint'
+				pa.poses = pick_poses
+				self._approach_pick_poses_publisher.publish(pa)
+
 				if fraction == 1: # could compute whole trajectory
 					ik_solved = True
 					break
@@ -141,7 +151,7 @@ class Grasp:
 			else:
 				print 'no path could be found'
 				return False
-	
+		
 		while not self.set_gripper(self._gripper_opened): pass
 		if not self.move_group.execute(plan, wait=True): # success
 			print 'motion execution failed'
@@ -214,9 +224,10 @@ class Grasp:
 
 			# respect orientation of grasp:
 			if index % 2:
-				poses.append([self._start_grasp_pose_180, approach_pose, target_pose, post_pose])
+				poses.append([self._start_grasp_pose, approach_pose, target_pose, post_pose])
 			else:
-				poses.append([self._start_grasp_pose, target_pose, approach_pose, post_pose])
+				poses.append([self._start_grasp_pose_180, approach_pose, target_pose, post_pose])
+				
 
 
 		return np.array(poses)
