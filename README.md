@@ -1,5 +1,14 @@
 # TiagoBears_grasp
-The grasping pipeline for team TiagoBears
+The grasping pipeline for team TiagoBears.
+
+## Service Usage
+
+Start the Service Node with 
+```
+roslaunch TiagoBears_grasp grasp_node
+```
+
+and query the Services `pick_left`, `pick_right`, `place_left`, `place_right` using TiagoBears_grasp.srv PickPlace.
 
 ## Grasp Parameters
 The parameters for grasping and parameters specifically for the gripper type used are in `config/*.yaml`.

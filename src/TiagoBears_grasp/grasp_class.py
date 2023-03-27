@@ -216,7 +216,7 @@ class Grasp:
 			if index % 2:
 				poses.append([self._start_grasp_pose_180, approach_pose, target_pose, post_pose])
 			else:
-				poses.append([self._start_grasp_pose, target_pose, approach_pose, post_pose])
+				poses.append([self._start_grasp_pose, approach_pose, target_pose, post_pose])
 
 
 		return np.array(poses)
