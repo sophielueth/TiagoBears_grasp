@@ -8,9 +8,9 @@ look_at_pose: [0.50, 0.00, 2.00, 1.35, -1.57, 0.70, 0.70] # joint space
 start_grasp_pose_left_pos:    [0.2, 0.375, 0.55] # left corner of the table
 start_grasp_pose_right_pos:   [0.2, -0.375, 0.55] # left corner of the table
 start_grasp_pose_left_quat:   [[0.1464466,  0.3535534, -0.3535534,  0.8535534],   
-                               [0.3535534, -0.1464466,  0.8535534,  0.3535534]] # 180 deg x (locally)
-start_grasp_pose_right_quat:  [[-0.1464466, 0.3535534, 0.3535534,  0.8535534],
-                               [ 0.3535534, 0.1464466, 0.8535534, -0.3535534]]  # 180 deg x (locally)
+                               [0.8535534, -0.3535534, -0.3535534, -0.1464466]] # 180 deg x (locally)
+start_grasp_pose_right_quat:  [[-0.1464466, 0.3535534,  0.3535534,  0.8535534],
+                               [ 0.8535534, 0.3535534, -0.3535534,  0.1464466]]  # 180 deg x (locally)
 
 rotate_0: [0, 0, 0, 1] # quat
 approach_ang_hor: [0, 0.382, 0,  0.923] # quat, 45deg around y
