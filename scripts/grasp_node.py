@@ -50,10 +50,10 @@ if __name__ == '__main__':
         else:
             return PickPlaceResponse(success=Bool(grasp_right.place(req.target_pose)))
     
-    pick_left = rospy.Service('pick_left', PickPlace, pick_left)
-    pick_right = rospy.Service('pick_right', PickPlace, pick_right)
-    place_left = rospy.Service('place_left', PickPlace, place_left)
-    place_right = rospy.Service('place_right', PickPlace, place_right)
+    pick_left = rospy.Service('/TiagoBears/pick_left', PickPlace, pick_left)
+    pick_right = rospy.Service('/TiagoBears/pick_right', PickPlace, pick_right)
+    place_left = rospy.Service('/TiagoBears/place_left', PickPlace, place_left)
+    place_right = rospy.Service('/TiagoBears/place_right', PickPlace, place_right)
 
     print('Ready to grasp!')
 
