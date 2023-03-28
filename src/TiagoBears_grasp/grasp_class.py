@@ -21,6 +21,7 @@ class Grasp:
 		self.ns = ns
 		self._cube_length = rospy.get_param(self.ns + '/cube_length')
 		self._height_over_place = rospy.get_param(self.ns + '/height_over_place')
+		self._set_z_up = rospy.get_param(self.ns + '/set_z_up')
 
 		self._arm_straight_pose = rospy.get_param(self.ns + '/arm_straight_pose') # joint space
 		self._start_pose = rospy.get_param(self.ns + '/start_pose') # joint space
@@ -62,9 +63,6 @@ class Grasp:
 		start_grasp_pose_quats = rospy.get_param(self.ns + '/start_grasp_pose_left_quat') if is_left else rospy.get_param(self.ns + '/start_grasp_pose_right_quat')
 		self._start_grasp_pose = Pose(position=Point(x=start_x, y=start_y, z=start_z), orientation=array_to_quat(start_grasp_pose_quats[0]))
 		self._start_grasp_pose_180 = Pose(position=Point(x=start_x, y=start_y, z=start_z), orientation=array_to_quat(start_grasp_pose_quats[1]))
-
-		# sqrt_2 = np.sqrt(2)
-		# self._optimal_x = np.array([ 1.0/sqrt_2, -1.0/sqrt_2, 0]) if is_left else np.array([1.0/sqrt_2, 1.0/sqrt_2, 0])
 	
 		# debug:pick pose publisher
 		self._approach_pick_poses_publisher = rospy.Publisher(self.ns + '/approach_pick_poses', PoseArray, queue_size=1)
@@ -72,6 +70,10 @@ class Grasp:
 	def pick(self, cube_pose):
 		# if cube_pose.position.z < 0.51: 
 		cube_pose.position.z = 0.51 # to avoid scrapping gripper on the table
+
+		if self._set_z_up:
+			# set z up
+			cube_pose = self._set_z_up(cube_pose)
 
 		# create pre-pick (10 cm above approach posistion) & approach position (1 cube horizonatlly relative to pick) & pick position & post-pick positin (10 cm above pick position)
 		pick_poses_list = self._get_pre_pick_poses(cube_pose)
@@ -253,6 +255,17 @@ class Grasp:
 
 		return poses
 
+	def _set_z_up(self, pose):
+		# disregard any orientation other than in the xy-plane aka set z-axis to point perfectly upwards
+		q = quat_to_array(pose.orientation)
+		x = tr.quaternion_matrix(q)[:3, 0]
+		z = np.array([0, 0, 1])
+		y = np.cross(z, x)
+
+		R = np.array([x, y, z]).T
+		pose.orientation = tr.quaternion_from_matrix(R)
+
+		return pose
 
 def array_to_quat(quat_arr):
 	return Quaternion(*quat_arr[:])
