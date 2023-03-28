@@ -67,8 +67,7 @@ class Grasp:
 		self._approach_pick_poses_publisher = rospy.Publisher(self.ns + '/approach_pick_poses', PoseArray, queue_size=1)
 
 	def pick(self, cube_pose):
-		# if cube_pose.position.z < 0.51: 
-		cube_pose.position.z = 0.51 # to avoid scrapping gripper on the table
+		if cube_pose.position.z < 0.5: cube_pose.position.z = 0.5 # to avoid scrapping gripper on the table
 
 		if self._set_z_up:
 			# set z up
@@ -208,9 +207,9 @@ class Grasp:
 			(target_pose.position.x, target_pose.position.y, target_pose.position.z) = (target_pose.position.x, target_pose.position.y, target_pose.position.z) - self._grasp_offset_x * R[:3, 0] # in cube's x frame
 			(target_pose.position.x, target_pose.position.y, target_pose.position.z) = (target_pose.position.x, target_pose.position.y, target_pose.position.z) + self._grasp_offset_z * R[:3, 2] # in cube's z frame
 
-			#  move target pose to -5cm in x direction in its own frame
+			#  move target pose to -8cm in x direction in its own frame
 			approach_pose = copy.deepcopy(target_pose)
-			(approach_pose.position.x, approach_pose.position.y, approach_pose.position.z) = (approach_pose.position.x, approach_pose.position.y, approach_pose.position.z) - 0.05 * R[:3, 0]
+			(approach_pose.position.x, approach_pose.position.y, approach_pose.position.z) = (approach_pose.position.x, approach_pose.position.y, approach_pose.position.z) - 0.08 * R[:3, 0]
 
 			q = tr.quaternion_multiply(q, self._approach_ang_hor) # approach angle to horizontal
 
