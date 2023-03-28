@@ -5,20 +5,16 @@ import copy
 import numpy as np
 
 import rospy
-import moveit_commander
-# path_constraints = moveit_msgs.msg.Constraints()
-# moveit_commander.move_group.MoveGroupCommander.set_path_constraints(path_constraints)
-import moveit_msgs.msg
-from geometry_msgs.msg import PoseArray, Pose, Point, Quaternion
-from tf import transformations as tr
 
+from geometry_msgs.msg import PoseArray, Pose, Point, Quaternion
 from std_msgs.msg import Header
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal, JointTolerance
+import moveit_msgs.msg
+
+from tf import transformations as tr
+import moveit_commander
 from actionlib import SimpleActionClient
-
-from cube_class import Cube
-
 
 class Grasp:
 	def __init__(self, is_left, ns='/TiagoBears'):
@@ -67,8 +63,8 @@ class Grasp:
 		self._start_grasp_pose = Pose(position=Point(x=start_x, y=start_y, z=start_z), orientation=array_to_quat(start_grasp_pose_quats[0]))
 		self._start_grasp_pose_180 = Pose(position=Point(x=start_x, y=start_y, z=start_z), orientation=array_to_quat(start_grasp_pose_quats[1]))
 
-		sqrt_2 = np.sqrt(2)
-		self._optimal_x = np.array([ 1.0/sqrt_2, -1.0/sqrt_2, 0]) if is_left else np.array([1.0/sqrt_2, 1.0/sqrt_2, 0])
+		# sqrt_2 = np.sqrt(2)
+		# self._optimal_x = np.array([ 1.0/sqrt_2, -1.0/sqrt_2, 0]) if is_left else np.array([1.0/sqrt_2, 1.0/sqrt_2, 0])
 	
 		# debug:pick pose publisher
 		self._approach_pick_poses_publisher = rospy.Publisher(self.ns + '/approach_pick_poses', PoseArray, queue_size=1)
@@ -79,7 +75,7 @@ class Grasp:
 
 		# create pre-pick (10 cm above approach posistion) & approach position (1 cube horizonatlly relative to pick) & pick position & post-pick positin (10 cm above pick position)
 		pick_poses_list = self._get_pre_pick_poses(cube_pose)
-		success = self._execute_pick(pick_poses_list)
+		success = self._execute_pick(cube_pose, pick_poses_list)
 
 		return success
 
@@ -104,7 +100,6 @@ class Grasp:
 		goal = FollowJointTrajectoryGoal()
 
 		header = Header()
-		# header.stamp = rospy.Time.now() + rospy.Duration.from_sec(1.0)
 		goal.trajectory = JointTrajectory(header=header, joint_names=self._gripper_joint_names, points=goal_state)
 		
 		goal.goal_time_tolerance = rospy.Duration.from_sec(0.5)
@@ -114,12 +109,15 @@ class Grasp:
 
 		return res == 3 or res == 4
 
-	def _execute_pick(self, pick_poses_list):
+	def _execute_pick(self, target_pose, pick_poses_list):
 		remove_approach_pose = False
 		ik_solved = False
 		
-		# sort pick_poses by order of similarity to optimal pose direction, coming diagonally from front corners of the table (x axis)
-		orient_error = np.sum(np.square([tr.quaternion_matrix(quat_to_array(pick_pose[-2].orientation))[:3, 0] for pick_pose in pick_poses_list] - self._optimal_x), axis=1)
+		# sort pick_poses by order of similarity to optimal pose direction: the direct path from the table start pose to the target pose, compare x axis
+		optimal_x = np.array([self._start_grasp_pose.position.x - target_pose.position.x, 
+							  self._start_grasp_pose.position.y - target_pose.position.y, 
+							  self._start_grasp_pose.position.z - target_pose.position.z])
+		orient_error = np.sum(np.square([tr.quaternion_matrix(quat_to_array(pick_pose[-2].orientation))[:3, 0] for pick_pose in pick_poses_list] - optimal_x), axis=1)
 		indx = np.argsort(orient_error)
 		pick_poses_list = pick_poses_list[indx]
 
