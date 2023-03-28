@@ -19,7 +19,6 @@ from actionlib import SimpleActionClient
 class Grasp:
 	def __init__(self, is_left, ns='/TiagoBears'):
 		self.ns = ns
-		self._cube_length = rospy.get_param(self.ns + '/cube_length')
 		self._height_over_place = rospy.get_param(self.ns + '/height_over_place')
 		self._set_z_up = rospy.get_param(self.ns + '/set_z_up')
 
