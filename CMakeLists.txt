@@ -17,6 +17,23 @@ find_package(catkin REQUIRED COMPONENTS
   gazebo_ros
 )
 
+add_service_files(
+  FILES
+  PickPlace.srv
+)
+
+catkin_python_setup()
+catkin_install_python(PROGRAMS scripts/test_cubes.py
+  scripts/grasp_node.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+  geometry_msgs
+)
+
 catkin_package(
   CATKIN_DEPENDS
     control_msgs
@@ -29,16 +46,5 @@ catkin_package(
     tf
     moveit_commander
     actionlib
+    message_runtime
 )
-
-catkin_install_python(PROGRAMS scripts/test_cubes.py
-  scripts/grasp_node.py
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
-
-add_service_files(
-  FILES
-  PickPlace.srv
-)
-
-catkin_python_setup()

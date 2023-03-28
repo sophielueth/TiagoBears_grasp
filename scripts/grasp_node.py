@@ -1,4 +1,4 @@
-#!/usr/bin/env/python
+#!/usr/bin/python
 
 from threading import Lock
 
@@ -24,30 +24,30 @@ if __name__ == '__main__':
     def pick_left(req):
         if in_center(req.pose):
             with center_part_lock:
-                return PickPlaceResponse(grasp_left.pick(req.pose))
+                return PickPlaceResponse(grasp_left.pick(req.pose)).data
         else:
-            return PickPlaceResponse(grasp_left.pick(req.pose))
+            return PickPlaceResponse(grasp_left.pick(req.pose)).data
     
     def pick_right(req):
         if in_center(req.pose):
             with center_part_lock:
-                return PickPlaceResponse(grasp_right.pick(req.pose))
+                return PickPlaceResponse(grasp_right.pick(req.pose)).data
         else:
-            return PickPlaceResponse(grasp_right.pick(req.pose))
+            return PickPlaceResponse(grasp_right.pick(req.pose)).data
     
     def place_left(req):
         if in_center(req.pose):
             with center_part_lock:
-                return PickPlaceResponse(grasp_left.place(req.pose))
+                return PickPlaceResponse(grasp_left.place(req.pose)).data
         else:
-            return PickPlaceResponse(grasp_left.place(req.pose))
+            return PickPlaceResponse(grasp_left.place(req.pose)).data
     
     def place_right(req):
         if in_center(req.pose):
             with center_part_lock:
-                return PickPlaceResponse(grasp_right.place(req.pose))
+                return PickPlaceResponse(grasp_right.place(req.pose)).data
         else:
-            return PickPlaceResponse(grasp_right.place(req.pose))
+            return PickPlaceResponse(grasp_right.place(req.pose)).data
     
     pick_left = rospy.Service('pick_left', PickPlace, pick_left)
     pick_right = rospy.Service('pick_right', PickPlace, pick_right)
