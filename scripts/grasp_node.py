@@ -1,14 +1,15 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 from threading import Lock
 
 import rospy
+from std_msgs.msg import Bool
 
 from TiagoBears_grasp.grasp_class import Grasp
 from TiagoBears_grasp.srv import PickPlace, PickPlaceResponse
 
 def in_center(pose):
-    if pose.position.x < 0.15 and pose.position.x > - 0.15:
+    if pose.position.y < 0.05 and pose.position.y > -0.05:
         return True
     else:
         return False
@@ -22,32 +23,32 @@ if __name__ == '__main__':
     grasp_right = Grasp(is_left=False)
 
     def pick_left(req):
-        if in_center(req.pose):
+        if in_center(req.target_pose):
             with center_part_lock:
-                return PickPlaceResponse(grasp_left.pick(req.pose)).data
+                return PickPlaceResponse(success=Bool(grasp_left.pick(req.target_pose)))
         else:
-            return PickPlaceResponse(grasp_left.pick(req.pose)).data
+            return PickPlaceResponse(success=Bool(grasp_left.pick(req.target_pose)))
     
     def pick_right(req):
-        if in_center(req.pose):
+        if in_center(req.target_pose):
             with center_part_lock:
-                return PickPlaceResponse(grasp_right.pick(req.pose)).data
+                return PickPlaceResponse(success=Bool(grasp_right.pick(req.target_pose)))
         else:
-            return PickPlaceResponse(grasp_right.pick(req.pose)).data
+            return PickPlaceResponse(success=Bool(grasp_right.pick(req.target_pose)))
     
     def place_left(req):
-        if in_center(req.pose):
+        if in_center(req.target_pose):
             with center_part_lock:
-                return PickPlaceResponse(grasp_left.place(req.pose)).data
+                return PickPlaceResponse(success=Bool(grasp_left.place(req.target_pose)))
         else:
-            return PickPlaceResponse(grasp_left.place(req.pose)).data
+            return PickPlaceResponse(success=Bool(grasp_left.place(req.target_pose)))
     
     def place_right(req):
-        if in_center(req.pose):
+        if in_center(req.target_pose):
             with center_part_lock:
-                return PickPlaceResponse(grasp_right.place(req.pose)).data
+                return PickPlaceResponse(success=Bool(grasp_right.place(req.target_pose)))
         else:
-            return PickPlaceResponse(grasp_right.place(req.pose)).data
+            return PickPlaceResponse(success=Bool(grasp_right.place(req.target_pose)))
     
     pick_left = rospy.Service('pick_left', PickPlace, pick_left)
     pick_right = rospy.Service('pick_right', PickPlace, pick_right)

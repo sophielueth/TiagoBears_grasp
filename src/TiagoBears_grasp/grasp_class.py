@@ -86,9 +86,9 @@ class Grasp:
 	def place(self, place_pose):
 		# create pre-place (10 cm above place posistion) & place position
 		place_poses_list = self._get_pre_place_poses(place_pose)
-		self._execute_place(place_poses_list)
+		success = self._execute_place(place_poses_list)
 
-		return 0 # represents success
+		return success# represents success
 
 	def move_to_start_position(self):
 		self.move_group.go(self._arm_straight_pose, wait=True)
