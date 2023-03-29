@@ -87,7 +87,7 @@ class Grasp:
 		return success# represents success
 
 	def move_to_start_position(self):
-		self.move_group.go(self._arm_straight_pose, wait=True)
+		# self.move_group.go(self._arm_straight_pose, wait=True)
 		self.move_group.go(self._start_pose, wait=True)
 		self.move_group.stop() # to ensure there is not residual movement
 
