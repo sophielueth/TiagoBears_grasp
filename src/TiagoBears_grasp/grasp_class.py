@@ -67,11 +67,11 @@ class Grasp:
 		self._approach_pick_poses_publisher = rospy.Publisher(self.ns + '/approach_pick_poses', PoseArray, queue_size=1)
 
 	def pick(self, cube_pose):
-		if cube_pose.position.z < 0.5: cube_pose.position.z = 0.5 # to avoid scrapping gripper on the table
+		if cube_pose.position.z < 0.505: cube_pose.position.z = 0.505 # to avoid scrapping gripper on the table
 
 		if self._set_z_up:
 			# set z up
-			cube_pose = self._set_z_up(cube_pose)
+			cube_pose = self._set_z_up_for(cube_pose)
 
 		# create pre-pick (10 cm above approach posistion) & approach position (1 cube horizonatlly relative to pick) & pick position & post-pick positin (10 cm above pick position)
 		pick_poses_list = self._get_pre_pick_poses(cube_pose)
@@ -130,7 +130,8 @@ class Grasp:
 				plan, fraction = self.move_group.compute_cartesian_path(
 					pick_poses_approach,  # waypoints to follow, disregard post pick pose
 					0.01,  # eef_step
-					0.0)  # jump_threshold
+					0.0,
+					avoid_collisions=True)  # jump_threshold
 
 				# debug publish pick poses
 				pa = PoseArray()
@@ -222,12 +223,10 @@ class Grasp:
 
 			# respect orientation of grasp:
 			if index % 2:
-				poses.append([self._start_grasp_pose, approach_pose, target_pose, post_pose])
-			else:
 				poses.append([self._start_grasp_pose_180, approach_pose, target_pose, post_pose])
+			else:
+				poses.append([self._start_grasp_pose, approach_pose, target_pose, post_pose])
 				
-
-
 		return np.array(poses)
 
 	def _get_pre_place_poses(self, cube_pose):
@@ -253,7 +252,7 @@ class Grasp:
 
 		return poses
 
-	def _set_z_up(self, pose):
+	def _set_z_up_for(self, pose):
 		# disregard any orientation other than in the xy-plane aka set z-axis to point perfectly upwards
 		q = quat_to_array(pose.orientation)
 		x = tr.quaternion_matrix(q)[:3, 0]
@@ -261,7 +260,9 @@ class Grasp:
 		y = np.cross(z, x)
 
 		R = np.array([x, y, z]).T
-		pose.orientation = tr.quaternion_from_matrix(R)
+		R_hom = np.identity(4)
+		R_hom[:3, :3] = R
+		pose.orientation = array_to_quat(tr.quaternion_from_matrix(R_hom))
 
 		return pose
 

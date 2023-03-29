@@ -3,7 +3,6 @@
 from threading import Lock
 
 import rospy
-from std_msgs.msg import Bool
 
 from TiagoBears_grasp.grasp_class import Grasp
 from TiagoBears_grasp.srv import PickPlace, PickPlaceResponse
@@ -25,30 +24,30 @@ if __name__ == '__main__':
     def pick_left(req):
         if in_center(req.target_pose):
             with center_part_lock:
-                return PickPlaceResponse(success=Bool(grasp_left.pick(req.target_pose)))
+                return PickPlaceResponse(success=grasp_left.pick(req.target_pose))
         else:
-            return PickPlaceResponse(success=Bool(grasp_left.pick(req.target_pose)))
+            return PickPlaceResponse(success=grasp_left.pick(req.target_pose))
     
     def pick_right(req):
         if in_center(req.target_pose):
             with center_part_lock:
-                return PickPlaceResponse(success=Bool(grasp_right.pick(req.target_pose)))
+                return PickPlaceResponse(success=grasp_right.pick(req.target_pose))
         else:
-            return PickPlaceResponse(success=Bool(grasp_right.pick(req.target_pose)))
+            return PickPlaceResponse(success=grasp_right.pick(req.target_pose))
     
     def place_left(req):
         if in_center(req.target_pose):
             with center_part_lock:
-                return PickPlaceResponse(success=Bool(grasp_left.place(req.target_pose)))
+                return PickPlaceResponse(success=grasp_left.place(req.target_pose))
         else:
-            return PickPlaceResponse(success=Bool(grasp_left.place(req.target_pose)))
+            return PickPlaceResponse(success=grasp_left.place(req.target_pose))
     
     def place_right(req):
         if in_center(req.target_pose):
             with center_part_lock:
-                return PickPlaceResponse(success=Bool(grasp_right.place(req.target_pose)))
+                return PickPlaceResponse(success=grasp_right.place(req.target_pose))
         else:
-            return PickPlaceResponse(success=Bool(grasp_right.place(req.target_pose)))
+            return PickPlaceResponse(success=grasp_right.place(req.target_pose))
     
     pick_left = rospy.Service('/TiagoBears/pick_left', PickPlace, pick_left)
     pick_right = rospy.Service('/TiagoBears/pick_right', PickPlace, pick_right)
