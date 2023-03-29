@@ -20,6 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
 add_service_files(
   FILES
   PickPlace.srv
+  Trigger.srv
 )
 
 catkin_python_setup()
