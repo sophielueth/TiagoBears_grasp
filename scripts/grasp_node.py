@@ -65,6 +65,22 @@ if __name__ == '__main__':
         grasp_right.move_to_watch_position()
         return TriggerResponse(res=True)
 
+    def open_left(req):
+        while not grasp_left.set_gripper(grasp_left._gripper_opened): pass
+        return TriggerResponse(res=True)
+    
+    def open_right(req):
+        while not grasp_right.set_gripper(grasp_right._gripper_opened): pass
+        return TriggerResponse(res=True)
+    
+    def close_left(req):
+        while not grasp_left.set_gripper(grasp_left._gripper_closed): pass
+        return TriggerResponse(res=True)
+    
+    def close_right(req):
+        while not grasp_right.set_gripper(grasp_right._gripper_closed): pass
+        return TriggerResponse(res=True)
+
     pick_left = rospy.Service('/TiagoBears/pick_left', PickPlace, pick_left)
     pick_right = rospy.Service('/TiagoBears/pick_right', PickPlace, pick_right)
     place_left = rospy.Service('/TiagoBears/place_left', PickPlace, place_left)
@@ -75,6 +91,11 @@ if __name__ == '__main__':
     go_to_watch_left = rospy.Service('/TiagoBears/go_to_watch_left', Trigger, go_to_watch_left)
     go_to_watch_right = rospy.Service('/TiagoBears/go_to_watch_right', Trigger, go_to_watch_right)
 
-    print('Ready to grasp!')
+    open_left = rospy.Service('/TiagoBears/open_left_gripper', Trigger, open_left)
+    open_right = rospy.Service('/TiagoBears/open_right_gripper', Trigger, open_right)
+    close_left = rospy.Service('/TiagoBears/close_left_gripper', Trigger, close_left)
+    close_right = rospy.Service('/TiagoBears/close_right_gripper', Trigger, close_right)
+
+    print('=== Ready to grasp! ===')
 
     rospy.spin()
