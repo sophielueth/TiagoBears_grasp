@@ -66,6 +66,8 @@ class Grasp:
 		# debug:pick pose publisher
 		self._approach_pick_poses_publisher = rospy.Publisher(self.ns + '/approach_pick_poses', PoseArray, queue_size=1)
 
+		self.planners = rospy.get_param(self.ns + '/planners')
+
 	def pick(self, cube_pose):
 		if cube_pose.position.z < 0.505: cube_pose.position.z = 0.505 # to avoid scrapping gripper on the table
 
@@ -112,10 +114,7 @@ class Grasp:
 		return res == 3 or res == 4
 		rospy.sleep(0.2) # safety
 
-	def _execute_pick(self, target_pose, pick_poses_list):
-		remove_approach_pose = False
-		ik_solved = False
-		
+	def _execute_pick(self, target_pose, pick_poses_list):		
 		# sort pick_poses by order of similarity to optimal pose direction: the direct path from the table start pose to the target pose, compare x axis
 		optimal_x = np.array([self._start_grasp_pose.position.x - target_pose.position.x, 
 							  self._start_grasp_pose.position.y - target_pose.position.y, 
@@ -124,36 +123,42 @@ class Grasp:
 		indx = np.argsort(orient_error)
 		pick_poses_list = pick_poses_list[indx]
 
-		for i in range(2):
-			for pick_poses in pick_poses_list: # if no good path found, remove the -0.05 cm x point from the planning (maybe at another one at -0.02, that can then be chosen) 
-				if remove_approach_pose:
-					pick_poses_approach = [pick_poses[0], pick_poses[-2]]
-				else:
-					pick_poses_approach = pick_poses[:-1] 
-				plan, fraction = self.move_group.compute_cartesian_path(
-					pick_poses_approach,  # waypoints to follow, disregard post pick pose
-					0.01,  # eef_step
-					0.0,
-					avoid_collisions=True)  # jump_threshold
+		remove_approach_pose = False
+		ik_solved = False
+		for i in range(2): # once with approach pose, once without
+			for j in range(len(self.planners)):
+				self.move_group.set_planner_id(self.planners[j])
+				for pick_poses in pick_poses_list: # if no good path found, remove the -0.05 cm x point from the planning (maybe at another one at -0.02, that can then be chosen) 
+					if remove_approach_pose:
+						pick_poses_approach = [pick_poses[0], pick_poses[-2]]
+					else:
+						pick_poses_approach = pick_poses[:-1] 
 
-				# debug publish pick poses
-				pa = PoseArray()
-				pa.header.frame_id = 'base_footprint'
-				pa.poses = pick_poses
-				self._approach_pick_poses_publisher.publish(pa)
+					plan, fraction = self.move_group.compute_cartesian_path(
+						pick_poses_approach,  # waypoints to follow, disregard post pick pose
+						0.01,  # eef_step
+						0.0,
+						avoid_collisions=True)  # jump_threshold
 
-				if fraction == 1: # could compute whole trajectory
-					ik_solved = True
-					break
+					# debug publish pick poses
+					pa = PoseArray()
+					pa.header.frame_id = 'base_footprint'
+					pa.poses = pick_poses
+					self._approach_pick_poses_publisher.publish(pa)
+
+					if fraction == 1: # could compute whole trajectory
+						ik_solved = True
+						break
+
 			if ik_solved:
 				break
 			elif not remove_approach_pose:
-					remove_approach_pose = True
-					print 'will remove the approach pose for path planning'
-			else:
-				print 'no path could be found'
-				return False
-		
+				remove_approach_pose = True
+				print 'will remove the approach pose for path planning'
+		else:
+			print 'no path could be found'
+			return False
+			
 		while not self.set_gripper(self._gripper_opened): pass
 		if not self.move_group.execute(plan, wait=True): # success
 			print 'motion execution failed'

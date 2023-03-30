@@ -1,6 +1,9 @@
 height_over_place: 0.005 # in m
 set_z_up: True # Whether or not to disregard orientation of the cube pose that is not in the xy-plane
 
+# planners: ['RRTConnectkConfigDefault']
+planners: ['SPARStwokConfigDefault', 'LazyPRMstarkConfigDefault', 'RRTConnectkConfigDefault'] # [0] will be default, in order to try out
+
 arm_straight_pose: [0, 0, 0, 0, 0, 0, 0] # joint space
 start_pose: [0.50, 0.30, 1.25, 1.35, -1.57, 0.70, 0.70] # joint space
 look_at_pose: [0.55, 1.35, 1.3, 1.95, -1.7, 0.50, -0.20] # joint space
