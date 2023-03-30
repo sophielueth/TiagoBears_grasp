@@ -90,10 +90,12 @@ class Grasp:
 		# self.move_group.go(self._arm_straight_pose, wait=True)
 		self.move_group.go(self._start_pose, wait=True)
 		self.move_group.stop() # to ensure there is not residual movement
+		rospy.sleep(0.2) # safety
 
 	def move_to_watch_position(self):
 		self.move_group.go(self._look_at_pose, wait=True)
 		self.move_group.stop() # to ensure there is not residual movement
+		rospy.sleep(0.2) # safety
 
 	def set_gripper(self, goal_state):
 		# create goal for the action client for the gripper
@@ -108,6 +110,7 @@ class Grasp:
 		res = self._gripper_client.send_goal_and_wait(goal, execute_timeout=rospy.Duration.from_sec(30.0), preempt_timeout=rospy.Duration.from_sec(10.0))
 
 		return res == 3 or res == 4
+		rospy.sleep(0.2) # safety
 
 	def _execute_pick(self, target_pose, pick_poses_list):
 		remove_approach_pose = False
@@ -157,6 +160,7 @@ class Grasp:
 			self.move_to_watch_position()
 			return False
 
+		rospy.sleep(0.2) # safety
 		# we don't use this return value, as it is not a good indicator of success/failure
 		while not self.set_gripper(self._gripper_closed): pass
 
@@ -178,6 +182,7 @@ class Grasp:
 			print 'motion execution failed'
 			return False
 		
+		rospy.sleep(0.2) # safety
 		# we don't use this return value, as it is not a good indicator of success/failure
 		while not self.set_gripper(self._gripper_opened): pass
 		
@@ -188,6 +193,8 @@ class Grasp:
 	def _retract(self, retract_poses):
 		plan, _ = self.move_group.compute_cartesian_path(retract_poses, 0.01, 0.0)  
 		self.move_group.execute(plan, wait=True)
+
+		rospy.sleep(0.2)
 
 		# move to watch position
 		self.move_to_watch_position()
