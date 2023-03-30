@@ -13,7 +13,8 @@ start_grasp_pose_right_quat:  [[-0.1464466, 0.3535534,  0.3535534,  0.8535534],
                                [ 0.8535534, 0.3535534, -0.3535534,  0.1464466]]  # 180 deg x (locally)
 
 rotate_0: [0, 0, 0, 1] # quat
-approach_ang_hor: [0, 0.382, 0,  0.923] # quat, 45deg around y
+# approach_ang_hor: [0, 0.382, 0,  0.923] # quat, 45deg around y
+approach_ang_hor: [0, 0.259, 0,  0.966] # quat, 30deg around y
 # quat, rotations around z axis in 30 deg steps
 grasps: [[0, 0, 0, 1],                            # front, 0 deg z
          [1, 0, 0, 0],                            # front with gripper rotated by 180 (symmetry)
