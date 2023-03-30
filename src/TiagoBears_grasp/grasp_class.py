@@ -69,7 +69,7 @@ class Grasp:
 		self.planners = rospy.get_param(self.ns + '/planners')
 
 	def pick(self, cube_pose):
-		if cube_pose.position.z < 0.505: cube_pose.position.z = 0.505 # to avoid scrapping gripper on the table
+		if cube_pose.position.z < 0.51: cube_pose.position.z = 0.51 # to avoid scrapping gripper on the table
 
 		if self._set_z_up:
 			# set z up
@@ -119,8 +119,11 @@ class Grasp:
 		optimal_x = np.array([self._start_grasp_pose.position.x - target_pose.position.x, 
 							  self._start_grasp_pose.position.y - target_pose.position.y, 
 							  self._start_grasp_pose.position.z - target_pose.position.z])
-		orient_error = np.sum(np.square([tr.quaternion_matrix(quat_to_array(pick_pose[-2].orientation))[:3, 0] for pick_pose in pick_poses_list] - optimal_x), axis=1)
-		indx = np.argsort(orient_error)
+		# orient_error = np.sum(np.square([tr.quaternion_matrix(quat_to_array(pick_pose[-2].orientation))[:3, 0] for pick_pose in pick_poses_list] - optimal_x), axis=1)
+		projection = [np.dot(optimal_x, tr.quaternion_matrix(quat_to_array(pick_pose[-2].orientation))[:3, 0]) for pick_pose in pick_poses_list] # projection of grasp x axis onto optimal x
+		# indx = np.flip(np.argsort(projection), axis=0)
+		indx = np.argsort(projection)
+		# indx = np.argsort(orien_error)
 		pick_poses_list = pick_poses_list[indx]
 
 		remove_approach_pose = False
@@ -149,6 +152,8 @@ class Grasp:
 					if fraction == 1: # could compute whole trajectory
 						ik_solved = True
 						break
+				if ik_solved:
+					break	
 
 			if ik_solved:
 				break
@@ -268,6 +273,7 @@ class Grasp:
 		# disregard any orientation other than in the xy-plane aka set z-axis to point perfectly upwards
 		q = quat_to_array(pose.orientation)
 		x = tr.quaternion_matrix(q)[:3, 0]
+		x[-1] = 0
 		z = np.array([0, 0, 1])
 		y = np.cross(z, x)
 
