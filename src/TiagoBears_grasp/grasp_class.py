@@ -190,6 +190,7 @@ class Grasp:
 
 		if not self.move_group.execute(plan, wait=True):
 			print 'motion execution failed'
+			while not self.set_gripper(self._gripper_opened): pass
 			return False
 		
 		rospy.sleep(0.2) # safety
