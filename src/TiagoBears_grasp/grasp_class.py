@@ -229,7 +229,10 @@ class Grasp:
 			R = tr.quaternion_matrix(q)
 			# hardcode a grasping frame
 			(target_pose.position.x, target_pose.position.y, target_pose.position.z) = (target_pose.position.x, target_pose.position.y, target_pose.position.z) - self._grasp_offset_x * R[:3, 0] # in cube's x frame
-			(target_pose.position.x, target_pose.position.y, target_pose.position.z) = (target_pose.position.x, target_pose.position.y, target_pose.position.z) + self._grasp_offset_z * R[:3, 2] # in cube's z frame
+			if index % 2:
+				(target_pose.position.x, target_pose.position.y, target_pose.position.z) = (target_pose.position.x, target_pose.position.y, target_pose.position.z) - self._grasp_offset_z * R[:3, 2] # in cube's z frame
+			else:
+				(target_pose.position.x, target_pose.position.y, target_pose.position.z) = (target_pose.position.x, target_pose.position.y, target_pose.position.z) + self._grasp_offset_z * R[:3, 2] # in cube's z frame
 
 			#  move target pose to -8cm in x direction in its own frame
 			approach_pose = copy.deepcopy(target_pose)
