@@ -119,11 +119,8 @@ class Grasp:
 		optimal_x = np.array([self._start_grasp_pose.position.x - target_pose.position.x, 
 							  self._start_grasp_pose.position.y - target_pose.position.y, 
 							  self._start_grasp_pose.position.z - target_pose.position.z])
-		# orient_error = np.sum(np.square([tr.quaternion_matrix(quat_to_array(pick_pose[-2].orientation))[:3, 0] for pick_pose in pick_poses_list] - optimal_x), axis=1)
 		projection = [np.dot(optimal_x, tr.quaternion_matrix(quat_to_array(pick_pose[-2].orientation))[:3, 0]) for pick_pose in pick_poses_list] # projection of grasp x axis onto optimal x
-		# indx = np.flip(np.argsort(projection), axis=0)
 		indx = np.argsort(projection)
-		# indx = np.argsort(orien_error)
 		pick_poses_list = pick_poses_list[indx]
 
 		remove_approach_pose = False
@@ -184,6 +181,11 @@ class Grasp:
 			if fraction == 1: # could compute whole trajectory
 				break
 		
+		pa = PoseArray()
+		pa.header.frame_id = 'base_footprint'
+		pa.poses = place_poses
+		self._approach_pick_poses_publisher.publish(pa)
+
 		if not fraction == 1:
 			print 'no path could be found'
 			return False
