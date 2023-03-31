@@ -194,6 +194,9 @@ class Grasp:
 
 	def _get_pre_pick_poses(self, cube_pose):
 		poses = []
+		
+		# debug grasp poses
+		grasp_poses = []
 
 		for index, grasp in enumerate(self._grasps):
 			target_pose = copy.deepcopy(cube_pose)
@@ -226,7 +229,16 @@ class Grasp:
 				poses.append([self._start_grasp_pose_180, approach_pose, target_pose, post_pose])
 			else:
 				poses.append([self._start_grasp_pose, approach_pose, target_pose, post_pose])
-				
+
+			# debug
+			grasp_poses.append(target_pose)
+
+		# debug publish all grasps around cube
+		pa = PoseArray()
+		pa.header.frame_id = 'base_footprint'
+		pa.poses = grasp_poses
+		self._approach_pick_poses_publisher.publish(pa)
+			
 		return np.array(poses)
 
 	def _get_pre_place_poses(self, cube_pose):
