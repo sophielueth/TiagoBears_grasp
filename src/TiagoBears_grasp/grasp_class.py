@@ -66,8 +66,10 @@ class Grasp:
 		# debug:pick pose publisher
 		self._approach_pick_poses_publisher = rospy.Publisher(self.ns + '/approach_pick_poses', PoseArray, queue_size=1)
 
+		self.planners = rospy.get_param(self.ns + '/planners')
+
 	def pick(self, cube_pose):
-		if cube_pose.position.z < 0.505: cube_pose.position.z = 0.505 # to avoid scrapping gripper on the table
+		if cube_pose.position.z < 0.51: cube_pose.position.z = 0.51 # to avoid scrapping gripper on the table
 
 		if self._set_z_up:
 			# set z up
@@ -87,13 +89,15 @@ class Grasp:
 		return success# represents success
 
 	def move_to_start_position(self):
-		self.move_group.go(self._arm_straight_pose, wait=True)
+		# self.move_group.go(self._arm_straight_pose, wait=True)
 		self.move_group.go(self._start_pose, wait=True)
 		self.move_group.stop() # to ensure there is not residual movement
+		rospy.sleep(0.2) # safety
 
 	def move_to_watch_position(self):
 		self.move_group.go(self._look_at_pose, wait=True)
 		self.move_group.stop() # to ensure there is not residual movement
+		rospy.sleep(0.2) # safety
 
 	def set_gripper(self, goal_state):
 		# create goal for the action client for the gripper
@@ -108,55 +112,65 @@ class Grasp:
 		res = self._gripper_client.send_goal_and_wait(goal, execute_timeout=rospy.Duration.from_sec(30.0), preempt_timeout=rospy.Duration.from_sec(10.0))
 
 		return res == 3 or res == 4
+		rospy.sleep(0.2) # safety
 
-	def _execute_pick(self, target_pose, pick_poses_list):
-		remove_approach_pose = False
-		ik_solved = False
-		
+	def _execute_pick(self, target_pose, pick_poses_list):		
 		# sort pick_poses by order of similarity to optimal pose direction: the direct path from the table start pose to the target pose, compare x axis
 		optimal_x = np.array([self._start_grasp_pose.position.x - target_pose.position.x, 
 							  self._start_grasp_pose.position.y - target_pose.position.y, 
 							  self._start_grasp_pose.position.z - target_pose.position.z])
-		orient_error = np.sum(np.square([tr.quaternion_matrix(quat_to_array(pick_pose[-2].orientation))[:3, 0] for pick_pose in pick_poses_list] - optimal_x), axis=1)
-		indx = np.argsort(orient_error)
+		# orient_error = np.sum(np.square([tr.quaternion_matrix(quat_to_array(pick_pose[-2].orientation))[:3, 0] for pick_pose in pick_poses_list] - optimal_x), axis=1)
+		projection = [np.dot(optimal_x, tr.quaternion_matrix(quat_to_array(pick_pose[-2].orientation))[:3, 0]) for pick_pose in pick_poses_list] # projection of grasp x axis onto optimal x
+		# indx = np.flip(np.argsort(projection), axis=0)
+		indx = np.argsort(projection)
+		# indx = np.argsort(orien_error)
 		pick_poses_list = pick_poses_list[indx]
 
-		for i in range(2):
-			for pick_poses in pick_poses_list: # if no good path found, remove the -0.05 cm x point from the planning (maybe at another one at -0.02, that can then be chosen) 
-				if remove_approach_pose:
-					pick_poses_approach = [pick_poses[0], pick_poses[-2]]
-				else:
-					pick_poses_approach = pick_poses[:-1] 
-				plan, fraction = self.move_group.compute_cartesian_path(
-					pick_poses_approach,  # waypoints to follow, disregard post pick pose
-					0.01,  # eef_step
-					0.0,
-					avoid_collisions=True)  # jump_threshold
+		remove_approach_pose = False
+		ik_solved = False
+		for i in range(2): # once with approach pose, once without
+			for j in range(len(self.planners)):
+				self.move_group.set_planner_id(self.planners[j])
+				for pick_poses in pick_poses_list: # if no good path found, remove the -0.05 cm x point from the planning (maybe at another one at -0.02, that can then be chosen) 
+					if remove_approach_pose:
+						pick_poses_approach = [pick_poses[0], pick_poses[-2]]
+					else:
+						pick_poses_approach = pick_poses[:-1] 
 
-				# debug publish pick poses
-				pa = PoseArray()
-				pa.header.frame_id = 'base_footprint'
-				pa.poses = pick_poses
-				self._approach_pick_poses_publisher.publish(pa)
+					plan, fraction = self.move_group.compute_cartesian_path(
+						pick_poses_approach,  # waypoints to follow, disregard post pick pose
+						0.01,  # eef_step
+						0.0,
+						avoid_collisions=True)  # jump_threshold
 
-				if fraction == 1: # could compute whole trajectory
-					ik_solved = True
-					break
+					# debug publish pick poses
+					pa = PoseArray()
+					pa.header.frame_id = 'base_footprint'
+					pa.poses = pick_poses
+					self._approach_pick_poses_publisher.publish(pa)
+
+					if fraction == 1: # could compute whole trajectory
+						ik_solved = True
+						break
+				if ik_solved:
+					break	
+
 			if ik_solved:
 				break
 			elif not remove_approach_pose:
-					remove_approach_pose = True
-					print 'will remove the approach pose for path planning'
-			else:
-				print 'no path could be found'
-				return False
-		
+				remove_approach_pose = True
+				print 'will remove the approach pose for path planning'
+		else:
+			print 'no path could be found'
+			return False
+			
 		while not self.set_gripper(self._gripper_opened): pass
 		if not self.move_group.execute(plan, wait=True): # success
 			print 'motion execution failed'
 			self.move_to_watch_position()
 			return False
 
+		rospy.sleep(0.2) # safety
 		# we don't use this return value, as it is not a good indicator of success/failure
 		while not self.set_gripper(self._gripper_closed): pass
 
@@ -176,8 +190,10 @@ class Grasp:
 
 		if not self.move_group.execute(plan, wait=True):
 			print 'motion execution failed'
+			while not self.set_gripper(self._gripper_opened): pass
 			return False
 		
+		rospy.sleep(0.2) # safety
 		# we don't use this return value, as it is not a good indicator of success/failure
 		while not self.set_gripper(self._gripper_opened): pass
 		
@@ -188,6 +204,8 @@ class Grasp:
 	def _retract(self, retract_poses):
 		plan, _ = self.move_group.compute_cartesian_path(retract_poses, 0.01, 0.0)  
 		self.move_group.execute(plan, wait=True)
+
+		rospy.sleep(0.2)
 
 		# move to watch position
 		self.move_to_watch_position()
@@ -268,6 +286,7 @@ class Grasp:
 		# disregard any orientation other than in the xy-plane aka set z-axis to point perfectly upwards
 		q = quat_to_array(pose.orientation)
 		x = tr.quaternion_matrix(q)[:3, 0]
+		x[-1] = 0
 		z = np.array([0, 0, 1])
 		y = np.cross(z, x)
 
