@@ -32,4 +32,4 @@ grasp_left.pick(cube_center_pose) # Pose from geometry_msgs.msg.Pose
 grasp_left.place(place_cube_center_pose)
 ```
 
-For an example implementation see `TiagoBears_plan/scripts/test_node.py`.
+For an example implementation see `TiagoBears_plan/scripts/grasp_node.py`.
